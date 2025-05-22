@@ -117,9 +117,7 @@ pytest
 flake8
 ```
 ## 项目页面展示
-![1](https://github.com/user-attachments/assets/36813930-6e42-4657-9037-cf25bd76d299)
-![2](https://github.com/user-attachments/assets/8fc1c7c8-7f5e-4b95-800f-ef15cf20d6c6)
-![3](https://github.com/user-attachments/assets/e982d653-6a65-447f-8d40-588ff14d6cef)
+
 
 ## 贡献指南
 
