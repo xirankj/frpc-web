@@ -23,7 +23,7 @@
 
 1. 克隆仓库：
 ```bash
-git clone https://github.com/yourusername/frpc-web.git
+git clone https://github.com/xirankj/frpc-web.git
 cd frpc-web
 ```
 
@@ -131,6 +131,6 @@ flake8
 
 ## 联系方式
 
-- 项目维护者：[Your Name]
-- 邮箱：[your.email@example.com]
-- 项目链接：[https://github.com/yourusername/frpc-web] 
+- 项目维护者：[xirankj]
+- 邮箱：[xirankj@163.com]
+- 项目链接：[https://github.com/xirankj/frpc-web] 
