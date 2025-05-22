@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRP 配置编辑器</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/bootstrap-icons.css') }}" rel="stylesheet">
+    <style>
+        body {
+            background-image: linear-gradient(to right, #fbc2eb, #a6c1ee);
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        .main-card {
+            max-width: 1030px;
+            margin: 20px auto;
+            border-radius: 15px;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.10);
+            padding: 15px;
+            position: relative;
+        }
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .button-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+        .add-btn, .save-btn {
+            min-width: 120px;
+        }
+        .table {
+            width: 100%;
+            margin-bottom: 0;
+        }
+        .table thead th {
+            background: #f8f9fa;
+            white-space: nowrap;
+        }
+        .table td {
+            white-space: nowrap;
+        }
+        .top-buttons {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .action-btn {
+            min-width: 120px;
+        }
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .icon-btn i {
+            font-size: 1.2rem;
+        }
+        .btn-group {
+            display: flex;
+            gap: 5px;
+        }
+        .btn-group .btn {
+            width: 60px;
+            height: 31px;
+            padding: 0;
+            text-align: center;
+            line-height: 31px;
+        }
+        .tab-content {
+            min-height: 350px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .main-card {
+                margin: 0;
+                padding: 10px;
+                height: 100vh;
+                border-radius: 0;
+                display: flex;
+                flex-direction: column;
+            }
+            .main-card h2 {
+                margin: 10px 0;
+                font-size: 1.5rem;
+            }
+            .nav-tabs {
+                margin-bottom: 10px;
+            }
+            .tab-content {
+                flex: 1;
+                overflow: hidden;
+                position: relative;
+            }
+            .button-group {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 5px;
+                padding: 5px;
+            }
+            .button-group .btn {
+                width: 100%;
+                font-size: 14px;
+                padding: 8px 5px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .button-group .btn i {
+                font-size: 16px;
+                margin-right: 4px;
+            }
+            .button-group .d-flex {
+                grid-column: span 3;
+                justify-content: center;
+                margin-top: 5px;
+            }
+            .top-buttons {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                flex-direction: row;
+                gap: 5px;
+                margin: 0;
+                z-index: 1;
+            }
+            .action-btn {
+                min-width: auto;
+                width: 40px;
+                height: 40px;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+            }
+            .action-btn i {
+                font-size: 1.2rem;
+            }
+            .table {
+                font-size: 14px;
+            }
+            .btn-group .btn {
+                width: 50px;
+                font-size: 12px;
+            }
+            .modal-dialog {
+                margin: 10px;
+            }
+            .modal-body {
+                padding: 15px;
+            }
+            .form-label {
+                margin-bottom: 5px;
+            }
+            .mb-3 {
+                margin-bottom: 10px !important;
+            }
+            .table-container {
+                position: absolute;
+                top: 50px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                overflow-y: auto;
+            }
+            /* 服务状态页面的移动端适配 */
+            #status .row {
+                margin: 0 -5px;
+            }
+            #status .col-4 {
+                padding: 0 5px;
+            }
+            #status .btn {
+                font-size: 14px;
+                padding: 8px 5px;
+            }
+            #status .btn i {
+                font-size: 16px;
+                margin-right: 4px;
+            }
+            #status .card {
+                margin-top: 10px;
+            }
+            #status .card-header {
+                padding: 10px;
+            }
+            #status .card-body {
+                padding: 10px;
+            }
+            #status pre {
+                height: 300px;
+                font-size: 12px;
+                padding: 8px;
+            }
+            #status .badge {
+                font-size: 12px;
+                padding: 5px 8px;
+            }
+            .status-indicator {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                padding: 8px 5px;
+            }
+            .status-indicator .status-dot {
+                margin-right: 4px;
+            }
+            .status-indicator .status-text {
+                font-size: 14px;
+            }
+        }
+        .log-output {
+            background-color: #1e1e1e;
+            color: #fff;
+            font-family: monospace;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .log-output::-webkit-scrollbar {
+            width: 8px;
+        }
+        .log-output::-webkit-scrollbar-track {
+            background: #2d2d2d;
+        }
+        .log-output::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 4px;
+        }
+        .log-output::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+        /* 修改进度条样式 */
+        .progress-container {
+            margin: 10px 0;
+            display: none;
+        }
+        .progress {
+            height: 20px;
+            margin-bottom: 5px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            background-color: #28a745 !important;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .progress-bar-striped {
+            background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent) !important;
+            background-size: 1rem 1rem !important;
+        }
+        .progress-bar-animated {
+            animation: progress-bar-stripes 1s linear infinite !important;
+        }
+        @keyframes progress-bar-stripes {
+            0% { background-position: 1rem 0; }
+            100% { background-position: 0 0; }
+        }
+        .progress-text {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        /* 状态指示器样式 */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            margin-left: auto;
+            padding-right: 15px;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.online {
+            background-color: #28a745;
+            box-shadow: 0 0 5px #28a745;
+        }
+        .status-dot.offline {
+            background-color: #6c757d;
+            box-shadow: 0 0 5px #6c757d;
+        }
+        .status-dot.error {
+            background-color: #dc3545;
+            box-shadow: 0 0 5px #dc3545;
+        }
+        .status-text {
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+<div class="container position-relative">
+    <div class="main-card bg-white p-4">
+        <h2 class="text-center mb-4">FRP 配置编辑器</h2>
+        <ul class="nav nav-tabs mb-3" id="configTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="server-tab" data-bs-toggle="tab" data-bs-target="#server" type="button" role="tab">服务器配置</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="client-tab" data-bs-toggle="tab" data-bs-target="#client" type="button" role="tab">客户端配置</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="status-tab" data-bs-toggle="tab" data-bs-target="#status" type="button" role="tab">服务状态</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="configTabsContent">
+            <!-- 服务器配置表格 -->
+            <div class="tab-pane fade show active" id="server" role="tabpanel">
+                <div class="button-group">
+                    <button class="btn btn-primary add-btn" onclick="openServerModal()">添加配置</button>
+                    <button class="btn btn-success save-btn" onclick="saveConfig()">保存配置</button>
+                </div>
+                <div class="table-container">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>服务器地址</th>
+                                <th>端口</th>
+                                <th>Web服务</th>
+                                <th>认证方式</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="serverTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- 客户端配置表格 -->
+            <div class="tab-pane fade" id="client" role="tabpanel">
+                <div class="button-group">
+                    <button class="btn btn-primary add-btn" onclick="openClientModal()">添加配置</button>
+                    <button class="btn btn-success save-btn" onclick="saveConfig()">保存配置</button>
+                </div>
+                <div class="table-container">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>类型</th>
+                                <th>本地IP</th>
+                                <th>本地端口</th>
+                                <th>远程端口</th>
+                                <th>自定义域名</th>
+                                <th>路由</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- 服务状态 -->
+            <div class="tab-pane fade" id="status" role="tabpanel">
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="confirmDownloadFrpc()">
+                        <i class="bi bi-download"></i> 下载 frpc
+                    </button>
+                    <button class="btn btn-info" onclick="openConfigManager()">
+                        <i class="bi bi-gear"></i> 配置管理
+                    </button>
+                    <button class="btn btn-success" onclick="startService()">
+                        <i class="bi bi-play-fill"></i> 启动服务
+                    </button>
+                    <button class="btn btn-warning" onclick="restartService()">
+                        <i class="bi bi-arrow-clockwise"></i> 重启服务
+                    </button>
+                    <button class="btn btn-danger" onclick="stopService()">
+                        <i class="bi bi-stop-fill"></i> 停止服务
+                    </button>
+                    <div class="status-indicator" id="statusIndicator">
+                        <span class="status-dot offline"></span>
+                        <span class="status-text">frpc 状态</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">服务日志</h6>
+                    </div>
+                    <div class="card-body">
+                        <pre id="logContent" class="bg-light p-3" style="height: 400px; overflow-y: auto;"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="top-buttons">
+            <button class="btn btn-warning action-btn" onclick="openChangePasswordModal()" title="修改密码">
+                <i class="bi bi-key"></i>
+            </button>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-danger action-btn" title="退出登录">
+                <i class="bi bi-box-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- 服务器配置弹窗 -->
+    <div class="modal fade" id="serverModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="serverFormModal" onsubmit="return submitServerModal()">
+            <div class="modal-header">
+              <h5 class="modal-title">服务器配置</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="serverEditIndex">
+              
+              <!-- 基本配置 -->
+              <div class="mb-3">
+                <label class="form-label">服务器地址 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="modalServerAddr" required>
+                <small class="form-text text-muted">服务端监听地址，默认 0.0.0.0</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">端口 <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="modalServerPort" required>
+                <small class="form-text text-muted">服务端监听端口，默认 7000</small>
+              </div>
+
+              <!-- Web服务配置 -->
+              <div class="mb-3">
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="enableWebServer" onchange="toggleWebServer()">
+                  <label class="form-check-label" for="enableWebServer">启用 Web 服务</label>
+                </div>
+                <div id="webServerConfig" style="display: none;">
+                  <div class="mb-3">
+                    <label class="form-label">Web地址</label>
+                    <input type="text" class="form-control" id="modalWebAddr">
+                    <small class="form-text text-muted">Web服务监听地址</small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Web端口</label>
+                    <input type="number" class="form-control" id="modalWebPort">
+                    <small class="form-text text-muted">Web服务监听端口</small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">用户名</label>
+                    <input type="text" class="form-control" id="modalWebUser">
+                    <small class="form-text text-muted">Web服务登录用户名</small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-control" id="modalWebPassword">
+                    <small class="form-text text-muted">Web服务登录密码</small>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 认证配置 -->
+              <div class="mb-3">
+                <div class="form-check mb-2">
+                  <input class="form-check-input" type="checkbox" id="enableAuth" onchange="toggleAuth()">
+                  <label class="form-check-label" for="enableAuth">启用认证</label>
+                </div>
+                <div id="authConfig" style="display: none;">
+                  <div class="mb-3">
+                    <label class="form-label">认证方式</label>
+                    <select class="form-control" id="modalAuthMethod">
+                      <option value="token">Token</option>
+                      <option value="oidc">OIDC</option>
+                    </select>
+                    <small class="form-text text-muted">认证方式，默认为 token</small>
+                  </div>
+                  <div class="mb-3" id="tokenAuthConfig">
+                    <label class="form-label">Token</label>
+                    <input type="text" class="form-control" id="modalAuthToken">
+                    <small class="form-text text-muted">认证令牌，客户端需要设置相同的值</small>
+                  </div>
+                  <div class="mb-3" id="oidcAuthConfig" style="display: none;">
+                    <label class="form-label">Issuer</label>
+                    <input type="text" class="form-control" id="modalAuthIssuer">
+                    <small class="form-text text-muted">OIDC 发行者地址</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 客户端配置弹窗 -->
+    <div class="modal fade" id="clientModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="clientFormModal" onsubmit="return submitClientModal()">
+            <div class="modal-header">
+              <h5 class="modal-title">客户端配置</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="clientEditIndex">
+              <div class="mb-3">
+                <label class="form-label">名称 <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="modalClientName" required>
+                <small class="form-text text-muted">代理名称，必填</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">类型 <span class="text-danger">*</span></label>
+                <select class="form-control" id="modalClientType" required onchange="toggleFields()">
+                  <option value="tcp">TCP</option>
+                  <option value="udp">UDP</option>
+                  <option value="http">HTTP</option>
+                  <option value="https">HTTPS</option>
+                  <option value="stcp">STCP</option>
+                  <option value="sudp">SUDP</option>
+                  <option value="xtcp">XTCP</option>
+                </select>
+                <small class="form-text text-muted">代理类型，必填</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">本地IP <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="modalClientLocalIP" required>
+                <small class="form-text text-muted">本地服务IP，必填</small>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">本地端口 <span class="text-danger">*</span></label>
+                <input type="number" class="form-control" id="modalClientLocalPort" required>
+                <small class="form-text text-muted">本地服务端口，必填</small>
+              </div>
+              <div class="mb-3 remote-port-field">
+                <label class="form-label">远程端口</label>
+                <input type="number" class="form-control" id="modalClientRemotePort">
+                <small class="form-text text-muted">远程服务端口，TCP/UDP类型必填</small>
+              </div>
+              <div class="mb-3 domain-field" style="display: none;">
+                <label class="form-label">自定义域名</label>
+                <input type="text" class="form-control" id="modalClientDomains">
+                <small class="form-text text-muted">HTTP/HTTPS类型可选，多个域名用逗号分隔</small>
+              </div>
+              <div class="mb-3 domain-field" style="display: none;">
+                <label class="form-label">路由</label>
+                <input type="text" class="form-control" id="modalClientRoute">
+                <small class="form-text text-muted">HTTP/HTTPS类型可选，URL路由规则</small>
+              </div>
+              <div class="mb-3 domain-field" style="display: none;">
+                <label class="form-label">BasicAuth</label>
+                <input type="text" class="form-control" id="modalClientBasicAuth">
+                <small class="form-text text-muted">HTTP/HTTPS类型可选，格式：用户名:密码</small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="submit" class="btn btn-primary">保存</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 修改密码对话框 -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="changePasswordForm" onsubmit="return handleChangePassword(event)">
+                    <div class="modal-header">
+                        <h5 class="modal-title">修改密码</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">当前密码</label>
+                            <input type="password" class="form-control" id="currentPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">新密码</label>
+                            <input type="password" class="form-control" id="newPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">确认新密码</label>
+                            <input type="password" class="form-control" id="confirmPassword" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">确认修改</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 确认删除对话框 -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmDeleteMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 操作结果对话框 -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultModalTitle">操作结果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="resultModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 下载确认对话框 -->
+<div class="modal fade" id="downloadConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">下载 frpc</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>是否下载 frpc 程序？</p>
+                <p class="text-muted">下载后将自动解压到根目录。</p>
+                <div class="progress-container" id="downloadProgressContainer">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text" id="downloadProgressText"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="cancelDownloadBtn" style="display: none;" onclick="cancelDownload()">取消下载</button>
+                <button type="button" class="btn btn-primary" onclick="checkAndDownloadFrpc()" id="startDownloadBtn">确认下载</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 配置管理弹窗 -->
+<div class="modal fade" id="configManagerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">frpc.json 配置管理</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">导入本地 frpc.json：</label>
+          <input type="file" id="importConfigFile" accept="application/json,.json" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">或粘贴配置内容：</label>
+          <textarea id="configTextarea" class="form-control" rows="12" placeholder="粘贴或编辑 frpc.json 配置"></textarea>
+          <div id="configFormatTip" class="form-text text-danger"></div>
+        </div>
+        <div class="mb-3 d-flex gap-2">
+          <button class="btn btn-outline-primary" type="button" onclick="exportConfigFile()">导出配置</button>
+          <button class="btn btn-outline-secondary" type="button" onclick="readConfigFile()">读取当前配置</button>
+          <button class="btn btn-outline-success" type="button" onclick="saveConfigFile()">保存配置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+<script>
+let serverConfigs = [];
+let clientConfigs = [];
+let ws = null;  // WebSocket 连接
+let wsRetryCount = 0;  // 重试次数
+const MAX_RETRY_COUNT = 3;  // 最大重试次数
+const RETRY_DELAY = 1000;  // 重试延迟（毫秒）
+
+// 添加输入验证函数
+function validateIP(ip) {
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+    if (!ipv4Regex.test(ip)) {
+        return 'IP 地址格式不正确';
+    }
+    
+    const parts = ip.split('.');
+    for (const part of parts) {
+        const num = parseInt(part);
+        if (num < 0 || num > 255) {
+            return 'IP 地址数值超出范围';
+        }
+    }
+    return '';
+}
+
+function validatePort(port) {
+    const num = parseInt(port);
+    if (isNaN(num)) {
+        return '端口必须是数字';
+    }
+    if (num < 1 || num > 65535) {
+        return '端口范围必须在 1-65535 之间';
+    }
+    return '';
+}
+
+function validateDomain(domain) {
+    // 域名格式：example.com 或 sub.example.com
+    const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    if (!domainRegex.test(domain)) {
+        return '域名格式不正确';
+    }
+    return '';
+}
+
+function validateDomains(domains) {
+    if (!domains) return '';
+    const domainList = domains.split(',').map(d => d.trim());
+    for (const domain of domainList) {
+        const error = validateDomain(domain);
+        if (error) {
+            return error;
+        }
+    }
+    return '';
+}
+
+// 修改密码
+async function handleChangePassword(event) {
+    event.preventDefault();
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        alert('请填写所有密码字段');
+        return false;
+    }
+    
+    if (newPassword !== confirmPassword) {
+        alert('两次输入的新密码不一致');
+        return false;
+    }
+    
+    try {
+        const response = await fetch('/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                currentPassword: currentPassword,
+                newPassword: newPassword
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // 关闭修改密码对话框
+            bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+            alert(data.message);
+            // 重定向到登录页面
+            window.location.href = '/login';
+        } else {
+            alert(data.message || '密码修改失败');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('密码修改失败，请重试');
+    }
+    return false;
+}
+
+// 加载配置
+async function loadConfig() {
+    try {
+        const response = await fetch('/config.json');
+        if (!response.ok) {
+            if (response.status === 401) {
+                // 未登录，重定向到登录页面
+                window.location.href = '/login';
+                return;
+            }
+            throw new Error('加载配置失败');
+        }
+        const config = await response.json();
+        // 服务器配置（只支持单条，便于扩展为多条）
+        serverConfigs = [{
+            serverAddr: config.serverAddr,
+            serverPort: config.serverPort,
+            webServer: config.webServer,
+            auth: config.auth
+        }];
+        // 客户端配置（包含启用状态）
+        clientConfigs = config.proxies || [];
+        renderServerTable();
+        renderClientTable();
+    } catch (error) {
+        console.error('Error:', error);
+        if (error.message.includes('Unexpected token')) {
+            // 如果返回的不是JSON，可能是未登录
+            window.location.href = '/login';
+        } else {
+            alert('加载配置失败，请重试');
+        }
+    }
+}
+
+function renderServerTable() {
+    const tbody = document.getElementById('serverTableBody');
+    tbody.innerHTML = '';
+    serverConfigs.forEach((cfg, idx) => {
+        tbody.innerHTML += `<tr>
+            <td>${cfg.serverAddr || ''}</td>
+            <td>${cfg.serverPort || ''}</td>
+            <td>${cfg.webServer ? '已启用' : '未启用'}</td>
+            <td>${cfg.auth ? cfg.auth.method : '未启用'}</td>
+            <td>
+                <div class="btn-group">
+                    <button class='btn btn-sm btn-primary' onclick='editServer(${idx})'>编辑</button>
+                    <button class='btn btn-sm btn-danger' onclick='deleteServer(${idx})'>删除</button>
+                </div>
+            </td>
+        </tr>`;
+    });
+}
+
+// 根据代理类型显示/隐藏字段
+function toggleFields() {
+    const type = document.getElementById('modalClientType').value;
+    const domainFields = document.querySelectorAll('.domain-field');
+    const remotePortField = document.querySelector('.remote-port-field');
+    
+    // 重置所有字段的显示状态
+    domainFields.forEach(field => field.style.display = 'none');
+    remotePortField.style.display = 'block';
+    
+    // 根据类型显示相应字段
+    if (type === 'http' || type === 'https') {
+        domainFields.forEach(field => field.style.display = 'block');
+        remotePortField.style.display = 'none';
+    } else if (type === 'tcp' || type === 'udp') {
+        remotePortField.style.display = 'block';
+    } else {
+        remotePortField.style.display = 'none';
+    }
+}
+
+// 修改客户端配置提交函数
+function submitClientModal() {
+    const idx = document.getElementById('clientEditIndex').value;
+    const type = document.getElementById('modalClientType').value;
+    
+    const localIP = document.getElementById('modalClientLocalIP').value;
+    const localPort = document.getElementById('modalClientLocalPort').value;
+    
+    // 验证本地 IP
+    const ipError = validateIP(localIP);
+    if (ipError) {
+        showResultModal('验证失败', `本地IP: ${ipError}`);
+        return false;
+    }
+    
+    // 验证本地端口
+    const portError = validatePort(localPort);
+    if (portError) {
+        showResultModal('验证失败', `本地端口: ${portError}`);
+        return false;
+    }
+    
+    const cfg = {
+        name: document.getElementById('modalClientName').value,
+        type: type,
+        localIP: localIP,
+        localPort: parseInt(localPort)
+    };
+    
+    // 根据类型添加可选字段
+    if (type === 'tcp' || type === 'udp') {
+        const remotePort = document.getElementById('modalClientRemotePort').value;
+        const remotePortError = validatePort(remotePort);
+        if (remotePortError) {
+            showResultModal('验证失败', `远程端口: ${remotePortError}`);
+            return false;
+        }
+        cfg.remotePort = parseInt(remotePort);
+    }
+    
+    if (type === 'http' || type === 'https') {
+        const domains = document.getElementById('modalClientDomains').value;
+        const domainsError = validateDomains(domains);
+        if (domainsError) {
+            showResultModal('验证失败', `自定义域名: ${domainsError}`);
+            return false;
+        }
+        if (domains) {
+            cfg.customDomains = domains.split(',').map(d => d.trim());
+        }
+        
+        const route = document.getElementById('modalClientRoute').value;
+        if (route) {
+            cfg.route = route;
+        }
+        
+        const basicAuth = document.getElementById('modalClientBasicAuth').value;
+        if (basicAuth) {
+            cfg.basicAuth = basicAuth;
+        }
+    }
+    
+    if (idx === '') {
+        clientConfigs.push(cfg);
+    } else {
+        clientConfigs[idx] = cfg;
+    }
+    
+    renderClientTable();
+    bootstrap.Modal.getInstance(document.getElementById('clientModal')).hide();
+    return false;
+}
+
+function renderClientTable() {
+    const tbody = document.getElementById('clientTableBody');
+    tbody.innerHTML = '';
+    clientConfigs.forEach((cfg, idx) => {
+        tbody.innerHTML += `<tr>
+            <td>${cfg.name || ''}</td>
+            <td>${cfg.type || ''}</td>
+            <td>${cfg.localIP || ''}</td>
+            <td>${cfg.localPort || ''}</td>
+            <td>${cfg.remotePort || ''}</td>
+            <td>${cfg.customDomains ? cfg.customDomains.join(',') : ''}</td>
+            <td>${cfg.route || ''}</td>
+            <td>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" 
+                           id="enable_${idx}" ${cfg.enabled !== false ? 'checked' : ''} 
+                           onchange="toggleClientEnabled(${idx}, this.checked)">
+                </div>
+            </td>
+            <td>
+                <div class="btn-group">
+                    <button class='btn btn-sm btn-primary' onclick='editClient(${idx})'>编辑</button>
+                    <button class='btn btn-sm btn-danger' onclick='deleteClient(${idx})'>删除</button>
+                </div>
+            </td>
+        </tr>`;
+    });
+}
+
+// 切换Web服务配置显示
+function toggleWebServer() {
+    const webServerConfig = document.getElementById('webServerConfig');
+    const isChecked = document.getElementById('enableWebServer').checked;
+    webServerConfig.style.display = isChecked ? 'block' : 'none';
+    
+    // 如果未选中，清空相关字段
+    if (!isChecked) {
+        document.getElementById('modalWebAddr').value = '';
+        document.getElementById('modalWebPort').value = '';
+        document.getElementById('modalWebUser').value = '';
+        document.getElementById('modalWebPassword').value = '';
+    }
+}
+
+// 切换认证配置显示
+function toggleAuth() {
+    const authConfig = document.getElementById('authConfig');
+    const isChecked = document.getElementById('enableAuth').checked;
+    authConfig.style.display = isChecked ? 'block' : 'none';
+    
+    // 如果未选中，清空相关字段
+    if (!isChecked) {
+        document.getElementById('modalAuthMethod').value = 'token';
+        document.getElementById('modalAuthToken').value = '';
+        document.getElementById('modalAuthIssuer').value = '';
+    }
+}
+
+// 切换认证方式配置
+function toggleAuthMethod() {
+    const method = document.getElementById('modalAuthMethod').value;
+    document.getElementById('tokenAuthConfig').style.display = method === 'token' ? 'block' : 'none';
+    document.getElementById('oidcAuthConfig').style.display = method === 'oidc' ? 'block' : 'none';
+    
+    // 切换认证方式时清空另一个方式的字段
+    if (method === 'token') {
+        document.getElementById('modalAuthIssuer').value = '';
+    } else {
+        document.getElementById('modalAuthToken').value = '';
+    }
+}
+
+function openServerModal(editIdx = null) {
+    document.getElementById('serverFormModal').reset();
+    document.getElementById('serverEditIndex').value = editIdx !== null ? editIdx : '';
+    
+    // 默认关闭可选配置
+    document.getElementById('enableWebServer').checked = false;
+    document.getElementById('enableAuth').checked = false;
+    document.getElementById('webServerConfig').style.display = 'none';
+    document.getElementById('authConfig').style.display = 'none';
+    
+    if (editIdx !== null) {
+        const cfg = serverConfigs[editIdx];
+        document.getElementById('modalServerAddr').value = cfg.serverAddr || '';
+        document.getElementById('modalServerPort').value = cfg.serverPort || '';
+        
+        // Web服务配置
+        const hasWebServer = cfg.webServer && Object.keys(cfg.webServer).length > 0;
+        document.getElementById('enableWebServer').checked = hasWebServer;
+        if (hasWebServer) {
+            document.getElementById('modalWebAddr').value = cfg.webServer.addr || '';
+            document.getElementById('modalWebPort').value = cfg.webServer.port || '';
+            document.getElementById('modalWebUser').value = cfg.webServer.user || '';
+            document.getElementById('modalWebPassword').value = cfg.webServer.password || '';
+        }
+        
+        // 认证配置
+        const hasAuth = cfg.auth && Object.keys(cfg.auth).length > 0;
+        document.getElementById('enableAuth').checked = hasAuth;
+        if (hasAuth) {
+            document.getElementById('modalAuthMethod').value = cfg.auth.method || 'token';
+            if (cfg.auth.method === 'token') {
+                document.getElementById('modalAuthToken').value = cfg.auth.token || '';
+            } else if (cfg.auth.method === 'oidc') {
+                document.getElementById('modalAuthIssuer').value = cfg.auth.oidc?.issuer || '';
+            }
+        }
+        
+        // 显示/隐藏相关配置
+        toggleWebServer();
+        toggleAuth();
+        toggleAuthMethod();
+    }
+    
+    new bootstrap.Modal(document.getElementById('serverModal')).show();
+}
+
+// 修改服务器配置提交函数
+function submitServerModal() {
+    const serverAddr = document.getElementById('modalServerAddr').value;
+    const serverPort = document.getElementById('modalServerPort').value;
+    
+    // 验证服务器地址
+    const addrError = validateIP(serverAddr);
+    if (addrError) {
+        showResultModal('验证失败', `服务器地址: ${addrError}`);
+        return false;
+    }
+    
+    // 验证服务器端口
+    const portError = validatePort(serverPort);
+    if (portError) {
+        showResultModal('验证失败', `服务器端口: ${portError}`);
+        return false;
+    }
+    
+    const idx = document.getElementById('serverEditIndex').value;
+    const cfg = {
+        serverAddr: serverAddr,
+        serverPort: parseInt(serverPort)
+    };
+    
+    // Web服务配置
+    if (document.getElementById('enableWebServer').checked) {
+        const webAddr = document.getElementById('modalWebAddr').value;
+        const webPort = document.getElementById('modalWebPort').value;
+        
+        // 验证 Web 服务地址
+        const webAddrError = validateIP(webAddr);
+        if (webAddrError) {
+            showResultModal('验证失败', `Web服务地址: ${webAddrError}`);
+            return false;
+        }
+        
+        // 验证 Web 服务端口
+        const webPortError = validatePort(webPort);
+        if (webPortError) {
+            showResultModal('验证失败', `Web服务端口: ${webPortError}`);
+            return false;
+        }
+        
+        cfg.webServer = {
+            addr: webAddr,
+            port: parseInt(webPort),
+            user: document.getElementById('modalWebUser').value,
+            password: document.getElementById('modalWebPassword').value
+        };
+    }
+    
+    // 认证配置
+    if (document.getElementById('enableAuth').checked) {
+        const method = document.getElementById('modalAuthMethod').value;
+        cfg.auth = {
+            method: method
+        };
+        if (method === 'token') {
+            cfg.auth.token = document.getElementById('modalAuthToken').value;
+        } else if (method === 'oidc') {
+            cfg.auth.oidc = {
+                issuer: document.getElementById('modalAuthIssuer').value
+            };
+        }
+    }
+    
+    if (idx === '') {
+        serverConfigs.push(cfg);
+    } else {
+        serverConfigs[idx] = cfg;
+    }
+    
+    renderServerTable();
+    bootstrap.Modal.getInstance(document.getElementById('serverModal')).hide();
+    return false;
+}
+
+function editServer(idx) { openServerModal(idx); }
+function deleteServer(idx) {
+    showConfirmDeleteModal('确定要删除该服务器配置吗？', () => {
+        serverConfigs.splice(idx, 1);
+        renderServerTable();
+        showResultModal('删除成功', '服务器配置已删除');
+    });
+}
+
+// 客户端配置弹窗
+function openClientModal(editIdx = null) {
+    document.getElementById('clientFormModal').reset();
+    document.getElementById('clientEditIndex').value = editIdx !== null ? editIdx : '';
+    
+    // 设置默认类型为 tcp
+    document.getElementById('modalClientType').value = 'tcp';
+    // 根据默认类型显示相应字段
+    toggleFields();
+    
+    if (editIdx !== null) {
+        const cfg = clientConfigs[editIdx];
+        document.getElementById('modalClientName').value = cfg.name || '';
+        document.getElementById('modalClientType').value = cfg.type || 'tcp';
+        document.getElementById('modalClientLocalIP').value = cfg.localIP || '';
+        document.getElementById('modalClientLocalPort').value = cfg.localPort || '';
+        document.getElementById('modalClientRemotePort').value = cfg.remotePort || '';
+        document.getElementById('modalClientDomains').value = cfg.customDomains ? cfg.customDomains.join(',') : '';
+        document.getElementById('modalClientRoute').value = cfg.route || '';
+        document.getElementById('modalClientBasicAuth').value = cfg.basicAuth || '';
+        
+        // 根据配置类型显示相应字段
+        toggleFields();
+    }
+    new bootstrap.Modal(document.getElementById('clientModal')).show();
+}
+function editClient(idx) { openClientModal(idx); }
+function deleteClient(idx) {
+    showConfirmDeleteModal('确定要删除该客户端配置吗？', () => {
+        clientConfigs.splice(idx, 1);
+        renderClientTable();
+        showResultModal('删除成功', '客户端配置已删除');
+    });
+}
+
+// 保存配置
+async function saveConfig() {
+    try {
+        if (serverConfigs.length === 0) throw new Error('请至少添加一个服务器配置');
+        const server = serverConfigs[0];
+        
+        // 保存到 config.json（包含所有配置，包括启用和未启用的）
+        const config = {
+            serverAddr: server.serverAddr,
+            serverPort: server.serverPort,
+            webServer: server.webServer,
+            auth: server.auth,
+            proxies: clientConfigs  // 包含所有客户端配置，包括启用状态
+        };
+        
+        // 保存到 config.json
+        const configResponse = await fetch('/save-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config)
+        });
+        
+        if (!configResponse.ok) throw new Error('保存配置失败');
+        const configResult = await configResponse.json();
+        
+        // 检查是否有启用的客户端配置
+        const enabledProxies = clientConfigs.filter(proxy => proxy.enabled !== false);
+        
+        if (enabledProxies.length > 0) {
+            // 保存到 frpc.json（只包含启用的配置，不包含 enabled 字段）
+            const frpcConfig = {
+                serverAddr: server.serverAddr,
+                serverPort: server.serverPort,
+                webServer: server.webServer,
+                auth: server.auth,
+                proxies: enabledProxies.map(proxy => {
+                    const { enabled, ...rest } = proxy;
+                    return rest;
+                })
+            };
+            
+            const frpcResponse = await fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(frpcConfig)
+            });
+            
+            if (!frpcResponse.ok) throw new Error('保存 frpc 配置失败');
+            const frpcResult = await frpcResponse.json();
+            
+            if (frpcResult.status === 'success') {
+                showResultModal('保存成功', '配置已成功保存');
+            } else {
+                throw new Error(frpcResult.message || '保存失败');
+            }
+        } else {
+            // 如果没有启用的配置，删除 frpc.json
+            const deleteResponse = await fetch('/delete-frpc-config', {
+                method: 'POST'
+            });
+            
+            if (!deleteResponse.ok) throw new Error('删除 frpc 配置失败');
+            
+            showResultModal('保存成功', '配置已保存，但没有启用的客户端配置');
+        }
+    } catch (e) {
+        showResultModal('保存失败', '保存配置失败：' + e.message);
+    }
+}
+
+// 显示操作结果对话框
+function showResultModal(title, message) {
+    document.getElementById('resultModalTitle').textContent = title;
+    document.getElementById('resultModalMessage').textContent = message;
+    new bootstrap.Modal(document.getElementById('resultModal')).show();
+}
+
+// 显示确认删除对话框
+function showConfirmDeleteModal(message, callback) {
+    document.getElementById('confirmDeleteMessage').textContent = message;
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+    
+    // 移除之前的事件监听器
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    // 添加新的事件监听器
+    newConfirmBtn.addEventListener('click', () => {
+        modal.hide();
+        callback();
+    });
+    
+    modal.show();
+}
+
+// 打开修改密码对话框
+function openChangePasswordModal() {
+    document.getElementById('changePasswordForm').reset();
+    new bootstrap.Modal(document.getElementById('changePasswordModal')).show();
+}
+
+// 显示下载确认对话框
+function confirmDownloadFrpc() {
+    new bootstrap.Modal(document.getElementById('downloadConfirmModal')).show();
+}
+
+// WebSocket 连接管理
+function connectWebSocket() {
+    return new Promise((resolve, reject) => {
+        if (ws) {
+            if (ws.readyState === WebSocket.OPEN) {
+                console.log('WebSocket 已连接');
+                resolve(ws);
+                return;
+            }
+            console.log('关闭旧的 WebSocket 连接');
+            ws.close();
+        }
+        
+        console.log('正在建立 WebSocket 连接...');
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+        console.log('WebSocket URL:', wsUrl);
+        
+        // 创建 WebSocket 连接
+        ws = new WebSocket(wsUrl);
+        
+        // 连接建立时的处理
+        ws.onopen = function() {
+            console.log('WebSocket 连接已建立');
+            wsRetryCount = 0;  // 重置重试计数
+            resolve(ws);
+        };
+        
+        // 连接关闭时的处理
+        ws.onclose = function(event) {
+            console.log('WebSocket 连接已关闭，代码:', event.code, '原因:', event.reason);
+            if (wsRetryCount < MAX_RETRY_COUNT) {
+                wsRetryCount++;
+                console.log(`尝试重新连接 (${wsRetryCount}/${MAX_RETRY_COUNT})...`);
+                setTimeout(() => {
+                    connectWebSocket().then(resolve).catch(reject);
+                }, RETRY_DELAY);
+            } else {
+                console.error('WebSocket 连接失败，已达到最大重试次数');
+                reject(new Error('WebSocket 连接失败，请刷新页面重试'));
+            }
+        };
+        
+        // 发生错误时的处理
+        ws.onerror = function(error) {
+            console.error('WebSocket 错误:', error);
+            // 错误处理由 onclose 处理重试
+        };
+        
+        // 接收消息的处理
+        ws.onmessage = function(event) {
+            try {
+                console.log('收到 WebSocket 消息:', event.data);
+                const data = JSON.parse(event.data);
+                switch(data.type) {
+                    case 'log':
+                        const logOutput = document.getElementById('logContent');
+                        logOutput.textContent = data.content;
+                        logOutput.scrollTop = logOutput.scrollHeight;
+                        break;
+                    case 'download_progress':
+                        console.log('收到下载进度:', data);
+                        const logOutput2 = document.getElementById('logContent');
+                        if (data.message) {
+                            logOutput2.textContent += `${data.message}\n`;
+                            logOutput2.scrollTop = logOutput2.scrollHeight;
+                            
+                            // 更新进度条
+                            const progressMatch = data.message.match(/下载进度: ([\d.]+)%/);
+                            if (progressMatch) {
+                                const progress = parseFloat(progressMatch[1]);
+                                console.log('更新进度条:', progress);
+                                const progressBar = document.querySelector('.progress-bar');
+                                progressBar.style.width = `${progress}%`;
+                                document.getElementById('downloadProgressText').textContent = `下载进度: ${progress.toFixed(1)}%`;
+                            }
+                        }
+                        
+                        if (data.completed) {
+                            console.log('下载状态完成:', data);
+                            if (data.error) {
+                                // 处理错误或取消状态
+                                console.log('下载出错或已取消:', data.error_message);
+                                logOutput2.textContent += `${data.error_message}\n`;
+                                if (data.error_message === '用户取消了下载') {
+                                    showResultModal('下载已取消', '下载任务已被用户取消');
+                                } else {
+                                    showResultModal('下载失败', data.error_message);
+                                }
+                            } else {
+                                // 处理成功状态
+                                console.log('下载成功');
+                                logOutput2.textContent += '下载完成，正在解压...\n';
+                                showResultModal('下载完成', 'frpc 已成功下载并解压到根目录。');
+                            }
+                            resetDownloadUI();
+                        }
+                        break;
+                    case 'service_status':
+                        updateStatusIndicator(data.status);
+                        break;
+                }
+            } catch (error) {
+                console.error('处理 WebSocket 消息失败:', error, '原始消息:', event.data);
+            }
+        };
+    });
+}
+
+// 检查并下载 frpc
+async function checkAndDownloadFrpc() {
+    console.log('开始下载流程');
+    try {
+        // 隐藏开始下载按钮，显示取消按钮
+        document.getElementById('startDownloadBtn').style.display = 'none';
+        document.getElementById('cancelDownloadBtn').style.display = 'block';
+        
+        // 显示进度条
+        const progressContainer = document.getElementById('downloadProgressContainer');
+        progressContainer.style.display = 'block';
+        
+        // 检查文件是否存在
+        console.log('检查文件是否存在');
+        const checkResponse = await fetch('/check-frpc');
+        if (!checkResponse.ok) {
+            throw new Error('检查文件失败');
+        }
+        
+        let checkResult = await checkResponse.json();
+        console.log('检查结果:', checkResult);
+        
+        if (checkResult.exists) {
+            showResultModal('下载取消', '目录中已存在 frpc 文件，请先删除后再下载。');
+            resetDownloadUI();
+            return;
+        }
+        
+        // 在日志窗口显示开始下载信息
+        const logOutput = document.getElementById('logContent');
+        logOutput.textContent = '正在建立连接...\n';
+        
+        try {
+            // 尝试建立 WebSocket 连接
+            console.log('尝试建立 WebSocket 连接');
+            await connectWebSocket();
+            console.log('WebSocket 连接成功');
+            logOutput.textContent = '开始下载 frpc...\n';
+        } catch (error) {
+            console.error('WebSocket 连接失败:', error);
+            throw new Error(`连接失败: ${error.message}`);
+        }
+        
+        // 开始下载
+        console.log('发送下载请求');
+        const downloadResponse = await fetch('/download-frpc', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!downloadResponse.ok) {
+            throw new Error('下载请求失败');
+        }
+        
+        let downloadResult = await downloadResponse.json();
+        console.log('下载请求响应:', downloadResult);
+        
+        if (downloadResult.status !== 'success') {
+            throw new Error(downloadResult.message || '下载失败');
+        }
+        
+        // 订阅下载进度
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log('发送开始下载进度订阅');
+            ws.send(JSON.stringify({ type: 'start_download_progress' }));
+        } else {
+            console.error('WebSocket 未连接，无法订阅下载进度');
+            throw new Error('WebSocket 连接已断开，无法获取下载进度');
+        }
+    } catch (error) {
+        console.error('下载错误:', error);
+        showResultModal('下载失败', error.message);
+        // 在日志窗口显示错误信息
+        const logOutput = document.getElementById('logContent');
+        logOutput.textContent += `下载失败: ${error.message}\n`;
+        resetDownloadUI();
+    }
+}
+
+// 取消下载
+function cancelDownload() {
+    console.log('发送取消下载请求');
+    fetch('/cancel-download', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('取消下载响应:', data);
+        if (data.status === 'success') {
+            // 立即更新UI状态
+            const logOutput2 = document.getElementById('logContent');
+            logOutput2.textContent += '下载已取消\n';
+            showResultModal('下载已取消', '下载任务已被用户取消');
+            resetDownloadUI();
+        } else {
+            console.error('取消下载失败:', data.message);
+            showResultModal('错误', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('取消下载请求失败:', error);
+        showResultModal('错误', '取消下载请求失败');
+    });
+}
+
+// 重置下载 UI
+function resetDownloadUI() {
+    console.log('重置下载 UI');
+    
+    // 重置按钮状态
+    const startDownloadBtn = document.getElementById('startDownloadBtn');
+    const cancelDownloadBtn = document.getElementById('cancelDownloadBtn');
+    if (startDownloadBtn) startDownloadBtn.style.display = 'block';
+    if (cancelDownloadBtn) cancelDownloadBtn.style.display = 'none';
+    
+    // 隐藏进度条
+    const progressContainer = document.getElementById('downloadProgressContainer');
+    if (progressContainer) progressContainer.style.display = 'none';
+    
+    // 重置进度条
+    const progressBar = document.querySelector('.progress-bar');
+    if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+    }
+    const progressText = document.getElementById('downloadProgressText');
+    if (progressText) progressText.textContent = '';
+    
+    // 关闭对话框
+    const downloadModal = document.getElementById('downloadConfirmModal');
+    if (downloadModal) {
+        const modalInstance = bootstrap.Modal.getInstance(downloadModal);
+        if (modalInstance) {
+            console.log('关闭下载对话框');
+            modalInstance.hide();
+            // 确保对话框完全关闭
+            downloadModal.addEventListener('hidden.bs.modal', function handler() {
+                downloadModal.removeEventListener('hidden.bs.modal', handler);
+                // 移除对话框的 backdrop
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                }
+                // 移除 body 的 modal-open 类
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            }, { once: true });
+        }
+    }
+    
+    // 清理可能存在的其他模态框
+    const allModals = document.querySelectorAll('.modal');
+    allModals.forEach(modal => {
+        const modalInstance = bootstrap.Modal.getInstance(modal);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+    });
+    
+    // 清理所有 backdrop
+    const allBackdrops = document.querySelectorAll('.modal-backdrop');
+    allBackdrops.forEach(backdrop => backdrop.remove());
+    
+    // 重置 body 样式
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+    
+    console.log('下载 UI 重置完成');
+}
+
+// 开始日志监听
+async function startLogPolling() {
+    try {
+        await connectWebSocket();
+    } catch (error) {
+        console.error('启动日志监听失败:', error);
+        showResultModal('连接失败', error.message);
+    }
+}
+
+// 停止日志监听
+function stopLogPolling() {
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
+}
+
+// 获取日志
+function fetchLog() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'get_log' }));
+    }
+}
+
+// 清空日志
+function clearLog() {
+    document.getElementById('logContent').textContent = '';
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'clear_log' }));
+    }
+}
+
+// 启动服务
+async function startService() {
+    try {
+        const response = await fetch('/frpc/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        alert(data.message);
+        updateServiceStatus();
+    } catch (error) {
+        console.error('启动服务失败:', error);
+        alert('启动服务失败: ' + error.message);
+    }
+}
+
+// 停止服务
+async function stopService() {
+    try {
+        const response = await fetch('/frpc/stop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        alert(data.message);
+        updateServiceStatus();
+    } catch (error) {
+        console.error('停止服务失败:', error);
+        alert('停止服务失败: ' + error.message);
+    }
+}
+
+// 重启服务
+async function restartService() {
+    try {
+        const response = await fetch('/frpc/restart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        alert(data.message);
+        updateServiceStatus();
+    } catch (error) {
+        console.error('重启服务失败:', error);
+        alert('重启服务失败: ' + error.message);
+    }
+}
+
+// 更新服务状态
+async function updateServiceStatus() {
+    try {
+        const response = await fetch('/frpc/status');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const statusBadge = document.getElementById('statusBadge');
+        if (statusBadge) {
+            if (data.status === 'running') {
+                statusBadge.className = 'badge bg-success';
+                statusBadge.textContent = `运行中 (PID: ${data.pid})`;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('restartBtn').disabled = false;
+            } else {
+                statusBadge.className = 'badge bg-danger';
+                statusBadge.textContent = '已停止';
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                document.getElementById('restartBtn').disabled = true;
+            }
+        }
+    } catch (error) {
+        console.error('获取服务状态失败:', error);
+        const statusBadge = document.getElementById('statusBadge');
+        if (statusBadge) {
+            statusBadge.className = 'badge bg-secondary';
+            statusBadge.textContent = '状态获取失败';
+        }
+    }
+}
+
+// 更新日志
+async function updateLogs() {
+    try {
+        const response = await fetch('/frpc/logs');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const logOutput = document.getElementById('logContent');
+        if (logOutput) {
+            logOutput.textContent = data.logs.join('');
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+    } catch (error) {
+        console.error('获取日志失败:', error);
+    }
+}
+
+// 更新状态指示器
+function updateStatusIndicator(status) {
+    const indicator = document.getElementById('statusIndicator');
+    const dot = indicator.querySelector('.status-dot');
+    const text = indicator.querySelector('.status-text');
+    
+    // 移除所有状态类
+    dot.classList.remove('online', 'offline', 'error');
+    
+    switch(status) {
+        case 'running':
+            dot.classList.add('online');
+            text.textContent = 'frpc 运行中';
+            break;
+        case 'stopped':
+            dot.classList.add('offline');
+            text.textContent = 'frpc 已停止';
+            break;
+        case 'error':
+            dot.classList.add('error');
+            text.textContent = 'frpc 错误';
+            break;
+        default:
+            dot.classList.add('offline');
+            text.textContent = 'frpc 状态';
+    }
+}
+
+// 1. 新增WebSocket方式监听frpc状态
+function startFrpcStatusWS() {
+    connectWebSocket().then(ws => {
+        ws.send(JSON.stringify({type: 'get_status'}));
+        ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'service_status') {
+                    updateStatusIndicator(data.status);
+                    // 控制按钮状态
+                    if (data.status === 'running') {
+                        document.getElementById('startBtn').disabled = true;
+                        document.getElementById('stopBtn').disabled = false;
+                    } else {
+                        document.getElementById('startBtn').disabled = false;
+                        document.getElementById('stopBtn').disabled = true;
+                    }
+                }
+            } catch (e) {
+                console.error('解析服务状态消息失败:', e);
+            }
+        };
+    });
+}
+
+// 页面加载时启动ws监听
+document.addEventListener('DOMContentLoaded', function() {
+    loadConfig();
+    document.getElementById('status-tab').addEventListener('shown.bs.tab', function() {
+        startLogPolling();
+    });
+    document.getElementById('status-tab').addEventListener('hidden.bs.tab', function() {
+        stopLogPolling();
+    });
+    startFrpcStatusWS();
+});
+
+function openConfigManager() {
+    // 清空提示
+    document.getElementById('configFormatTip').textContent = '';
+    // 读取当前配置到编辑框
+    readConfigFile();
+    new bootstrap.Modal(document.getElementById('configManagerModal')).show();
+}
+
+function readConfigFile() {
+    fetch('/config.json').then(r => r.json()).then(data => {
+        // 创建新的配置对象，不包含 enabled 字段
+        const displayConfig = {
+            serverAddr: data.serverAddr,
+            serverPort: data.serverPort,
+            webServer: data.webServer,
+            auth: data.auth,
+            proxies: data.proxies.map(proxy => {
+                const { enabled, ...rest } = proxy;
+                return rest;
+            })
+        };
+        document.getElementById('configTextarea').value = JSON.stringify(displayConfig, null, 2);
+        document.getElementById('configFormatTip').textContent = '';
+    }).catch(() => {
+        document.getElementById('configTextarea').value = '';
+        document.getElementById('configFormatTip').textContent = '未找到 config.json 文件';
+    });
+}
+
+function exportConfigFile() {
+    fetch('/config.json').then(r => r.json()).then(data => {
+        // 创建新的配置对象，不包含 enabled 字段
+        const exportConfig = {
+            serverAddr: data.serverAddr,
+            serverPort: data.serverPort,
+            webServer: data.webServer,
+            auth: data.auth,
+            proxies: data.proxies.map(proxy => {
+                const { enabled, ...rest } = proxy;
+                return rest;
+            })
+        };
+        
+        const blob = new Blob([JSON.stringify(exportConfig, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'config.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+}
+
+function saveConfigFile() {
+    const text = document.getElementById('configTextarea').value;
+    let json;
+    try {
+        json = JSON.parse(text);
+        document.getElementById('configFormatTip').textContent = '';
+    } catch (err) {
+        document.getElementById('configFormatTip').textContent = '不是有效的 JSON 格式，无法保存！';
+        return;
+    }
+    
+    // 为每个客户端配置添加 enabled 字段
+    if (json.proxies) {
+        json.proxies = json.proxies.map(proxy => ({
+            ...proxy,
+            enabled: true  // 默认启用
+        }));
+    }
+    
+    // 检查是否已存在
+    fetch('/config.json').then(r => {
+        if (r.ok) {
+            if (confirm('config.json 已存在，是否替换？')) {
+                doSaveConfig(json);
+            }
+        } else {
+            doSaveConfig(json);
+        }
+    }).catch(() => {
+        doSaveConfig(json);
+    });
+}
+
+function doSaveConfig(json) {
+    fetch('/save-config', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(json)
+    }).then(r => r.json()).then(data => {
+        if (data.status === 'success') {
+            // 如果有启用的配置，保存到 frpc.json
+            const enabledProxies = json.proxies.filter(proxy => proxy.enabled !== false);
+            if (enabledProxies.length > 0) {
+                const frpcConfig = {
+                    ...json,
+                    proxies: enabledProxies.map(proxy => {
+                        const { enabled, ...rest } = proxy;
+                        return rest;
+                    })
+                };
+                
+                fetch('/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(frpcConfig)
+                }).then(() => {
+                    alert('保存成功！');
+                    loadConfig();
+                }).catch(() => {
+                    alert('保存成功，但 frpc.json 保存失败！');
+                    loadConfig();
+                });
+            } else {
+                // 如果没有启用的配置，删除 frpc.json
+                fetch('/delete-frpc-config', {
+                    method: 'POST'
+                }).then(() => {
+                    alert('保存成功！');
+                    loadConfig();
+                }).catch(() => {
+                    alert('保存成功，但删除 frpc.json 失败！');
+                    loadConfig();
+                });
+            }
+        } else {
+            alert('保存失败：' + (data.message || '未知错误'));
+        }
+    }).catch(() => {
+        alert('保存失败！');
+    });
+}
+
+// 检查会话状态
+async function checkSession() {
+    try {
+        const response = await fetch('/status');
+        if (response.status === 401) {
+            // 未登录或会话过期
+            window.location.href = '/login';
+            return false;
+        }
+        return true;
+    } catch (error) {
+        console.error('检查会话失败:', error);
+        return false;
+    }
+}
+
+// 定期检查会话状态
+setInterval(checkSession, 60000);  // 每分钟检查一次
+
+// 处理 API 响应
+async function handleApiResponse(response) {
+    if (response.status === 401) {
+        // 未登录或会话过期
+        window.location.href = '/login';
+        throw new Error('会话已过期，请重新登录');
+    }
+    
+    if (response.status === 404) {
+        throw new Error('请求的接口不存在');
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('服务器返回了非 JSON 响应');
+    }
+    
+    return await response.json();
+}
+
+// 更新状态显示
+async function updateStatus() {
+    try {
+        if (!await checkSession()) return;
+        
+        const response = await fetch('/frpc/status');
+        const data = await handleApiResponse(response);
+        
+        const statusBadge = document.getElementById('statusBadge');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const restartBtn = document.getElementById('restartBtn');
+    } catch (error) {
+        console.error('更新服务状态失败:', error);
+        alert('更新服务状态失败: ' + error.message);
+    }
+}
+
+// 添加切换客户端启用状态的函数
+function toggleClientEnabled(idx, enabled) {
+    clientConfigs[idx].enabled = enabled;
+}
+
+// 修改文件导入处理
+document.getElementById('importConfigFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) {
+        console.log('未选择文件');
+        return;
+    }
+    
+    console.log('选择的文件:', file.name, '大小:', file.size, '类型:', file.type);
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(evt) {
+        console.log('文件读取完成');
+        try {
+            // 获取文件内容并去除可能的 BOM 标记
+            let content = evt.target.result;
+            console.log('文件内容长度:', content.length);
+            
+            if (content.charCodeAt(0) === 0xFEFF) {
+                content = content.slice(1);
+                console.log('已移除 BOM 标记');
+            }
+            
+            // 尝试解析 JSON
+            const json = JSON.parse(content);
+            console.log('JSON 解析成功');
+            
+            // 验证必要的字段
+            if (!json.serverAddr || !json.serverPort) {
+                throw new Error('配置文件缺少必要的服务器配置字段');
+            }
+            
+            // 确保 proxies 是数组
+            if (json.proxies && !Array.isArray(json.proxies)) {
+                throw new Error('proxies 必须是数组');
+            }
+            
+            // 确保导入的配置不包含 enabled 字段
+            if (json.proxies) {
+                json.proxies = json.proxies.map(proxy => {
+                    const { enabled, ...rest } = proxy;
+                    return rest;
+                });
+            }
+            
+            // 格式化 JSON 并显示
+            const formattedJson = JSON.stringify(json, null, 2);
+            console.log('格式化后的 JSON:', formattedJson);
+            
+            const textarea = document.getElementById('configTextarea');
+            textarea.value = formattedJson;
+            console.log('已更新文本框内容');
+            
+            document.getElementById('configFormatTip').textContent = '文件导入成功';
+            document.getElementById('configFormatTip').className = 'form-text text-success';
+        } catch (err) {
+            console.error('解析配置文件失败:', err);
+            document.getElementById('configFormatTip').textContent = `文件内容格式错误: ${err.message}`;
+            document.getElementById('configFormatTip').className = 'form-text text-danger';
+            document.getElementById('configTextarea').value = '';
+        }
+    };
+    
+    reader.onerror = function(error) {
+        console.error('读取文件失败:', error);
+        document.getElementById('configFormatTip').textContent = '读取文件失败，请重试';
+        document.getElementById('configFormatTip').className = 'form-text text-danger';
+    };
+    
+    // 读取文件内容
+    console.log('开始读取文件...');
+    reader.readAsText(file, 'UTF-8');
+});
+
+// 添加文本区域输入验证
+document.getElementById('configTextarea').addEventListener('input', function() {
+    try {
+        const content = this.value.trim();
+        if (!content) {
+            document.getElementById('configFormatTip').textContent = '';
+            document.getElementById('configFormatTip').className = 'form-text';
+            return;
+        }
+        
+        const json = JSON.parse(content);
+        
+        // 验证必要的字段
+        if (!json.serverAddr || !json.serverPort) {
+            throw new Error('配置文件缺少必要的服务器配置字段');
+        }
+        
+        // 确保 proxies 是数组
+        if (json.proxies && !Array.isArray(json.proxies)) {
+            throw new Error('proxies 必须是数组');
+        }
+        
+        document.getElementById('configFormatTip').textContent = 'JSON 格式正确';
+        document.getElementById('configFormatTip').className = 'form-text text-success';
+    } catch (err) {
+        console.error('JSON 格式错误:', err);
+        document.getElementById('configFormatTip').textContent = `JSON 格式错误: ${err.message}`;
+        document.getElementById('configFormatTip').className = 'form-text text-danger';
+    }
+});
+</script>
+</body>
+</html> 

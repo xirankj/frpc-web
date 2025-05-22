@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRP 配置编辑器 - 登录</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            height: 100%;
+            background-image: linear-gradient(to right, #fbc2eb, #a6c1ee);
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+        .container {
+            height: 100%;
+        }
+        .login-wrapper {
+            background-color: #fff;
+            width: 358px;
+            min-height: 420px;
+            border-radius: 15px;
+            padding: 0 50px;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.10);
+        }
+        .header {
+            font-size: 38px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 120px;
+        }
+        .input-item {
+            display: block;
+            width: 100%;
+            margin-bottom: 20px;
+            border: 0;
+            padding: 10px;
+            border-bottom: 1px solid rgb(128, 125, 125);
+            font-size: 15px;
+            outline: none;
+            background: none;
+        }
+        .input-item:placeholder {
+            text-transform: uppercase;
+        }
+        .btn {
+            text-align: center;
+            padding: 10px;
+            width: 100%;
+            margin-top: 40px;
+            background-image: linear-gradient(to right, #a6c1ee, #fbc2eb);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .btn:active {
+            opacity: 0.9;
+        }
+        .msg {
+            text-align: center;
+            line-height: 88px;
+        }
+        a {
+            text-decoration-line: none;
+            color: #abc1ee;
+        }
+        @media (max-width: 400px) {
+            .login-wrapper { width: 98vw; padding: 0 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-wrapper">
+            <div class="header">FRP 配置登录</div>
+            <form id="loginForm" onsubmit="return handleLogin(event)">
+                <div class="form-wrapper">
+                    <input type="text" name="username" id="username" placeholder="用户名" class="input-item" required>
+                    <input type="password" name="password" id="password" placeholder="密码" class="input-item" required>
+                    <div id="newPasswordGroup" style="display: none;">
+                        <input type="password" id="newPassword" placeholder="新密码" class="input-item">
+                        <input type="password" id="confirmPassword" placeholder="确认新密码" class="input-item">
+                    </div>
+                    <button type="submit" class="btn" id="loginButton">登录</button>
+                </div>
+            </form>
+            <div class="msg">
+                没有账号？<a href="#" onclick="alert('请联系管理员创建账号')">联系管理员</a>
+            </div>
+        </div>
+    </div>
+    <script>
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.requireNewPassword) {
+                    // 显示修改密码表单
+                    document.getElementById('newPasswordGroup').style.display = 'block';
+                    document.getElementById('loginButton').textContent = '修改密码';
+                    document.getElementById('loginForm').onsubmit = handlePasswordChange;
+                } else if (data.status === 'success') {
+                    // 登录成功，跳转到主页
+                    window.location.href = '/index';
+                } else {
+                    alert(data.message || '登录失败');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('登录失败，请重试');
+            }
+        }
+
+        async function handlePasswordChange(event) {
+            event.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                alert('两次输入的密码不一致');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        currentPassword: password,
+                        newPassword: newPassword
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert(data.message);
+                    // 重定向到登录页面
+                    window.location.href = data.redirect;
+                } else {
+                    alert(data.message || '密码修改失败');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('密码修改失败，请重试');
+            }
+        }
+
+        document.getElementById('loginForm').onsubmit = handleLogin;
+    </script>
+</body>
+</html> 

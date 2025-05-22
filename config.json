@@ -1,0 +1,110 @@
+{
+  "serverAddr": "113.44.68.174",
+  "serverPort": 8024,
+  "webServer": {
+    "addr": "192.168.100.220",
+    "password": "pass",
+    "port": 7400,
+    "user": "admin1"
+  },
+  "auth": {
+    "method": "token",
+    "token": "5AABFBE9462AD4E7AC283310563DAE3D"
+  },
+  "proxies": [
+    {
+      "enabled": true,
+      "localIP": "192.168.100.240",
+      "localPort": 3389,
+      "name": "3389",
+      "remotePort": 23399,
+      "type": "tcp"
+    },
+    {
+      "customDomains": [
+        "v4.a.xryll.cn"
+      ],
+      "enabled": true,
+      "localIP": "192.168.100.1",
+      "localPort": 80,
+      "name": "istore",
+      "type": "http"
+    },
+    {
+      "customDomains": [
+        "nas.a.xryll.cn"
+      ],
+      "enabled": true,
+      "localIP": "192.168.100.200",
+      "localPort": 5666,
+      "name": "FNOS",
+      "type": "http"
+    },
+    {
+      "enabled": true,
+      "localIP": "192.168.100.251",
+      "localPort": 3001,
+      "name": "qywxapi",
+      "remotePort": 5600,
+      "type": "tcp"
+    },
+    {
+      "customDomains": [
+        "ha.a.xryll.cn"
+      ],
+      "enabled": true,
+      "localIP": "192.168.100.251",
+      "localPort": 8123,
+      "name": "Home Assistant",
+      "type": "http"
+    },
+    {
+      "customDomains": [
+        "pve.a.xryll.cn"
+      ],
+      "enabled": true,
+      "localIP": "192.168.100.250",
+      "localPort": 8006,
+      "name": "PVE",
+      "type": "https"
+    },
+    {
+      "customDomains": [
+        "bt.a.xryll.cn"
+      ],
+      "enabled": true,
+      "localIP": "192.168.100.220",
+      "localPort": 18983,
+      "name": "bt",
+      "type": "http"
+    },
+    {
+      "customDomains": [
+        "yd.a.xryll.cn"
+      ],
+      "enabled": false,
+      "localIP": "192.168.100.1",
+      "localPort": 3002,
+      "name": "sun-panel",
+      "type": "http"
+    },
+    {
+      "customDomains": [
+        "wx.a.xryll.cn"
+      ],
+      "enabled": true,
+      "localIP": "192.168.100.251",
+      "localPort": 3001,
+      "name": "微信推送",
+      "type": "http"
+    },
+    {
+      "enabled": true,
+      "localIP": "192.168.100.180",
+      "localPort": 3389,
+      "name": "主PC",
+      "remotePort": 23333,
+      "type": "tcp"
+    }
+  ]
+}
