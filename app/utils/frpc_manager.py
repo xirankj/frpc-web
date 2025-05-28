@@ -147,13 +147,15 @@ class FrpcManager:
             if not os.access(self.frpc_path, os.X_OK):
                 os.chmod(self.frpc_path, 0o755)
 
+            # 启动前清空日志文件
+            with open(self.log_path, 'w', encoding='utf-8') as log_file:
+                log_file.write(f"\n=== frpc 服务启动于 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+
             # 确保日志线程在运行
             self._start_log_thread()
 
             # 启动 frpc 进程
             with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                # 添加启动标记
-                log_file.write(f"\n=== frpc 服务启动于 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
                 self.process = subprocess.Popen(
                     [self.frpc_path, '-c', self.config_path],
                     stdout=log_file,
@@ -167,26 +169,22 @@ class FrpcManager:
                 self.error_state = True
                 self.error_message = "服务启动后立即退出，请检查日志"
                 logger.error("服务启动后立即退出")
-                # 添加错误标记到日志
                 with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                    log_file.write(f"\n[错误] {self.error_message}\n")
+                    log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [错误] {self.error_message}\n")
                 return False, "服务启动失败，请检查日志"
 
-            # 检查是否有错误状态
             if self.error_state:
                 return False, f"服务启动失败: {self.error_message}"
 
             logger.info(f"frpc 服务已启动，PID: {self.process.pid}")
-            # 添加成功标记到日志
             with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                log_file.write(f"\n[成功] frpc 服务已启动，PID: {self.process.pid}\n")
+                log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [成功] frpc 服务已启动，PID: {self.process.pid}\n")
             return True, f"frpc 服务已启动，PID: {self.process.pid}"
 
         except Exception as e:
             logger.error(f"启动 frpc 服务失败: {str(e)}")
             self.error_state = True
             self.error_message = str(e)
-            # 添加错误标记到日志
             with open(self.log_path, 'a', encoding='utf-8') as log_file:
                 log_file.write(f"\n[错误] 启动失败: {str(e)}\n")
             return False, f"启动失败: {str(e)}"
@@ -210,7 +208,7 @@ class FrpcManager:
             if found:
                 logger.info("frpc 服务已停止")
                 with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                    log_file.write("\n[成功] frpc 服务已停止\n")
+                    log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [成功] frpc 服务已停止\n")
                 return True, "frpc 服务已停止"
             else:
                 logger.warning("frpc 服务未运行")
@@ -218,12 +216,15 @@ class FrpcManager:
         except Exception as e:
             logger.error(f"停止 frpc 服务失败: {str(e)}")
             with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                log_file.write(f"\n[错误] 停止失败: {str(e)}\n")
+                log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [错误] 停止失败: {str(e)}\n")
             return False, f"停止失败: {str(e)}"
 
     def restart(self):
         """重启 frpc 服务"""
         self.stop()
+        # 重启时也清空日志
+        with open(self.log_path, 'w', encoding='utf-8') as log_file:
+            log_file.write(f"\n=== frpc 服务重启于 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
         return self.start()
 
     def is_running(self):
@@ -263,30 +264,15 @@ class FrpcManager:
             }
 
     def get_logs(self, lines=100):
-        """获取最新的日志内容"""
+        """只读取frpc.log文件内容，返回最新日志（去除ANSI颜色码）"""
         try:
             if not os.path.exists(self.log_path):
                 return []
-            
-            logs = []
-            # 首先从队列中获取所有日志
-            while not self.log_queue.empty():
-                try:
-                    log = self.log_queue.get_nowait()
-                    if log:  # 只添加非空日志
-                        logs.append(log)
-                except queue.Empty:
-                    break
-            
-            # 如果队列中没有足够的日志，从文件中读取
-            if len(logs) < lines:
-                with open(self.log_path, 'r', encoding='utf-8') as f:
-                    file_logs = f.readlines()[-lines:]
-                    logs.extend([line.strip() for line in file_logs if line.strip()])
-            
-            # 确保日志按时间顺序排序
-            logs = sorted(logs, key=lambda x: x if x.startswith('===') else '')
-            return logs[-lines:]  # 返回最新的 n 行
+            with open(self.log_path, 'r', encoding='utf-8') as f:
+                file_logs = f.readlines()[-lines:]
+                ansi_escape = re.compile(r'\x1B\[[0-9;]*[A-Za-z]')
+                logs = [ansi_escape.sub('', line.strip()) for line in file_logs if line.strip()]
+            return logs
         except Exception as e:
             logger.error(f"读取日志失败: {str(e)}")
             return []

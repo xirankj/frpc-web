@@ -1,19 +1,21 @@
+import os
+os.environ['EVENTLET_NO_GREENDNS'] = 'yes'
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask
 from app import create_app, db
 from app.models import User
 from werkzeug.security import generate_password_hash
-import eventlet
-from eventlet import wsgi
-import os
 from dotenv import load_dotenv
 import threading
 from app.utils.network_check import NetworkChecker
 from app.utils.frpc_manager import FrpcManager
+from eventlet import wsgi  # 这里要加上
 
 # 加载环境变量
 load_dotenv()
 
-eventlet.monkey_patch()
 
 app = create_app()
 

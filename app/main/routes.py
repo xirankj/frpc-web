@@ -38,6 +38,8 @@ log_queue = queue.Queue()
 
 frpc_manager = FrpcManager()
 
+download_thread = None
+
 def broadcast_logs():
     """广播日志到所有 WebSocket 客户端"""
     while True:
@@ -98,6 +100,7 @@ def ws_handler(ws):
                             'error_message': download_status['error_message']
                         }))
                     elif data.get('type') == 'get_log':
+                        # 直接读取最新日志并推送
                         logs = frpc_manager.get_logs()
                         ws.send(json.dumps({
                             'type': 'log',
@@ -249,219 +252,97 @@ def check_frpc():
     try:
         frpc_path = Path('frpc')
         exists = frpc_path.exists() and frpc_path.is_file()
-        print(f'检查 frpc 文件: {frpc_path.absolute()}, 存在: {exists}')  # 添加日志
         return jsonify({
             'status': 'success',
             'exists': exists
         })
     except Exception as e:
-        print(f'检查文件失败: {str(e)}')  # 添加日志
         return jsonify({
             'status': 'error',
             'message': str(e)
         }), 500
 
 def download_and_extract():
-    global download_status
+    import requests
+    import tarfile
+    import os
+    import shutil
+    url = "https://github.com/fatedier/frp/releases/download/v0.62.1/frp_0.62.1_linux_amd64.tar.gz"
+    filename = "frp_0.62.1_linux_amd64.tar.gz"
     try:
-        # 重置下载状态
-        download_status['is_downloading'] = True
-        download_status['progress'] = '开始下载...'
-        download_status['completed'] = False
-        download_status['error'] = False
-        download_status['error_message'] = ''
-        broadcast_download_status()
-        
-        # 使用国内镜像源
-        mirrors = [
-            'https://github.com/fatedier/frp/releases/download/v0.62.1/frp_0.62.1_linux_amd64.tar.gz',
-            'https://hub.fastgit.xyz/fatedier/frp/releases/download/v0.62.1/frp_0.62.1_linux_amd64.tar.gz',
-            'https://ghproxy.com/https://github.com/fatedier/frp/releases/download/v0.62.1/frp_0.62.1_linux_amd64.tar.gz'
-        ]
-        
-        # 下载文件
-        download_status['progress'] = '正在下载压缩包...'
-        logger.info('开始下载 frpc')
-        broadcast_download_status()
-        
-        # 设置更短的超时时间和请求头
-        session = requests.Session()
-        session.headers.update({
-            'User-Agent': 'FRPC-Web-Manager/1.0 (Windows NT 10.0; Win64; x64)',
-            'Accept': 'application/octet-stream',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive'
-        })
-        
-        # 配置重试策略
-        retry_strategy = requests.adapters.Retry(
-            total=3,  # 总重试次数
-            backoff_factor=1,  # 重试间隔
-            status_forcelist=[500, 502, 503, 504],  # 需要重试的HTTP状态码
-            allowed_methods=["GET"]  # 允许重试的HTTP方法
-        )
-        adapter = requests.adapters.HTTPAdapter(max_retries=retry_strategy)
-        session.mount("http://", adapter)
-        session.mount("https://", adapter)
-        
-        # 尝试从不同镜像源下载
-        last_error = None
-        for url in mirrors:
-            try:
-                logger.info(f'尝试从 {url} 下载')
-                response = session.get(url, stream=True, timeout=(10, 30))  # 连接超时10秒，读取超时30秒
-                response.raise_for_status()
-                break
-            except Exception as e:
-                last_error = e
-                logger.warning(f'从 {url} 下载失败: {str(e)}')
-                continue
-        else:
-            raise Exception(f'所有镜像源下载失败: {str(last_error)}')
-        
-        # 获取文件大小
-        total_size = int(response.headers.get('content-length', 0))
-        if total_size == 0:
-            raise Exception('无法获取文件大小')
-            
-        logger.info(f'文件大小: {total_size} 字节')
-        block_size = 8192
-        downloaded = 0
-        last_progress_update = time.time()
-        
-        # 保存文件
-        tar_path = 'frpc.tar.gz'
-        with open(tar_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=block_size):
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        with open(filename, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=8192):
                 if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    
-                    # 更新进度（每秒最多更新一次）
-                    current_time = time.time()
-                    if current_time - last_progress_update >= 1:
-                        progress = (downloaded / total_size) * 100
-                        download_status['progress'] = f'下载进度: {progress:.1f}%'
-                        broadcast_download_status()
-                        last_progress_update = current_time
-        
-        # 解压文件
-        download_status['progress'] = '正在解压文件...'
-        logger.info('开始解压文件...')
-        broadcast_download_status()
-        
-        try:
-            import subprocess
-            # 使用系统 tar 命令解压，设置超时
-            try:
-                subprocess.run(['tar', '-xf', tar_path], check=True, timeout=60)
-            except subprocess.TimeoutExpired:
-                raise Exception('解压超时')
-            except subprocess.CalledProcessError as e:
-                raise Exception(f'解压失败: {str(e)}')
-                
-            logger.info('解压完成')
-            
-            # 找到解压后的目录
-            extracted_dir = None
-            for item in os.listdir('.'):
-                if item.startswith('frp_') and os.path.isdir(item):
-                    extracted_dir = item
-                    break
-            
-            if not extracted_dir:
-                raise Exception('未找到解压目录')
-            
-            # 移动 frpc 文件到根目录
-            frpc_path = os.path.join(extracted_dir, 'frpc')
-            if not os.path.exists(frpc_path):
-                raise Exception('未找到 frpc 文件')
-            
-            if os.path.exists('frpc'):
-                logger.info('删除已存在的 frpc 文件')
-                try:
-                    os.remove('frpc')  # 如果已存在，先删除
-                except Exception as e:
-                    raise Exception(f'删除已存在的 frpc 文件失败: {str(e)}')
-            
-            logger.info(f'移动文件: {frpc_path} -> frpc')
-            try:
-                shutil.move(frpc_path, 'frpc')
-            except Exception as e:
-                raise Exception(f'移动文件失败: {str(e)}')
-            
-            # 删除解压目录
-            logger.info(f'删除解压目录: {extracted_dir}')
-            try:
-                shutil.rmtree(extracted_dir)
-            except Exception as e:
-                logger.error(f'删除解压目录失败: {str(e)}')  # 仅记录错误，不影响主流程
-            
-        except Exception as e:
-            logger.error(f'解压失败: {str(e)}')
-            raise Exception(f'解压文件失败: {str(e)}')
-        finally:
-            # 清理压缩包
-            if os.path.exists(tar_path):
-                try:
-                    logger.info(f'删除压缩包: {tar_path}')
-                    os.remove(tar_path)
-                except Exception as e:
-                    logger.error(f'删除压缩包失败: {str(e)}')
-        
-        # 验证文件是否成功下载和解压
-        if not os.path.exists('frpc'):
-            raise Exception('frpc 文件未成功创建')
-        
-        # 设置文件权限（在 Windows 下跳过）
+                    file.write(chunk)
+        # 解压
+        with tarfile.open(filename, 'r:gz') as tar:
+            tar.extractall()
+        # 查找解压目录
+        extracted_dir = None
+        for item in os.listdir('.'):
+            if item.startswith('frp_') and os.path.isdir(item):
+                extracted_dir = item
+                break
+        if not extracted_dir:
+            return False, '未找到解压目录'
+        frpc_path = os.path.join(extracted_dir, 'frpc')
+        if not os.path.exists(frpc_path):
+            return False, '未找到 frpc 文件'
+        # 移动 frpc 到根目录
+        if os.path.exists('frpc'):
+            os.remove('frpc')
+        shutil.move(frpc_path, 'frpc')
+        # 清理解压目录和压缩包
+        shutil.rmtree(extracted_dir)
+        os.remove(filename)
+        # 设置可执行权限（非Windows）
         if os.name != 'nt':
-            try:
-                logger.info('设置文件权限')
-                os.chmod('frpc', 0o755)  # 设置可执行权限
-            except Exception as e:
-                logger.error(f'设置文件权限失败: {str(e)}')
-        
-        # 更新状态
-        download_status['progress'] = '下载和解压完成'
-        download_status['completed'] = True
-        logger.info('下载和解压完成')
-        broadcast_download_status()
-        
+            os.chmod('frpc', 0o755)
+        return True, '下载并解压完成，frpc 已放到根目录。'
     except Exception as e:
-        logger.error(f'下载或解压失败: {str(e)}')
-        download_status['error'] = True
-        download_status['error_message'] = str(e)
-        download_status['completed'] = True
-        broadcast_download_status()
-        raise
+        return False, f'下载或解压失败: {e}'
 
 @bp.route('/download-frpc', methods=['POST'])
 @login_required
 def download_frpc():
+    global download_thread
     try:
         # 如果已经在下载，返回错误
-        if download_status['is_downloading']:
+        if getattr(download_frpc, '_is_downloading', False):
             return jsonify({
                 'status': 'error',
                 'message': '已有下载任务正在进行'
             }), 400
-        
-        # 启动下载线程
-        thread = threading.Thread(target=download_and_extract, daemon=True)  # 设置为守护线程
-        thread.start()
-        
-        return jsonify({
-            'status': 'success',
-            'message': '开始下载'
-        })
+        setattr(download_frpc, '_is_downloading', True)
+        def run_download():
+            success, msg = download_and_extract()
+            setattr(download_frpc, '_last_result', (success, msg))
+            setattr(download_frpc, '_is_downloading', False)
+        download_thread = threading.Thread(target=run_download, daemon=True)
+        download_thread.start()
+        download_thread.join()  # 阻塞直到下载完成
+        success, msg = getattr(download_frpc, '_last_result', (False, '未知错误'))
+        if success:
+            return jsonify({'status': 'success', 'message': msg})
+        else:
+            return jsonify({'status': 'error', 'message': msg}), 500
     except Exception as e:
-        logger.error(f'启动下载失败: {str(e)}')
-        download_status['is_downloading'] = False  # 确保状态被重置
-        broadcast_download_status()
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        setattr(download_frpc, '_is_downloading', False)
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@bp.route('/stop-download', methods=['POST'])
+@login_required
+def stop_download():
+    global download_thread
+    if getattr(download_frpc, '_is_downloading', False):
+        # Python线程无法强制终止，只能通过状态标志配合下载函数实现中断。
+        # 这里简单地将状态标志设为False，实际下载线程会继续运行直到结束。
+        setattr(download_frpc, '_is_downloading', False)
+        return jsonify({'status': 'success', 'message': '已请求停止下载任务（注意：实际线程会继续运行到结束）'})
+    else:
+        return jsonify({'status': 'error', 'message': '没有正在进行的下载任务'}), 400
 
 @bp.route('/cancel-download', methods=['POST'])
 @login_required
