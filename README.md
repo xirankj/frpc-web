@@ -100,6 +100,11 @@ frpc-web/
 └── run.py               # 应用入口
 ```
 
+## 页面截图
+![1](https://github.com/user-attachments/assets/2113e177-b3b8-4427-819c-ab77a10818a8)
+![2 (1)](https://github.com/user-attachments/assets/52ba06f0-995f-4863-9a7c-603b2907ed62)
+![2](https://github.com/user-attachments/assets/4ffd5751-c917-4574-af24-f4b3e384ec5d)
+
 ## 开发指南
 
 1. 安装开发依赖：
