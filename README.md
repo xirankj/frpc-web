@@ -104,7 +104,7 @@ frpc-web/
 
 1. 安装开发依赖：
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 ```
 
 2. 运行测试：
