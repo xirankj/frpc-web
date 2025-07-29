@@ -99,32 +99,13 @@ frpc-web/
 ├── requirements.txt      # Python 依赖
 └── run.py               # 应用入口
 ```
-
-## 开发指南
-
-1. 安装开发依赖：
-```bash
-pip install -r requirements.txt
+## 界面截图
 ```
-
-2. 运行测试：
-```bash
-pytest
+<img width="2703" height="1793" alt="下载" src="https://github.com/user-attachments/assets/92838d71-b038-41de-9eea-7c1500cbae37" />
+<img width="2545" height="1239" alt="服务器配置" src="https://github.com/user-attachments/assets/f319f428-8fe2-403c-9c1f-0f8e740bfa57" />
+<img width="2545" height="1239" alt="客户端配置" src="https://github.com/user-attachments/assets/f04926e2-91ab-4f18-832a-d4c0c949b9a1" />
+<img width="2545" height="1239" alt="服务状态" src="https://github.com/user-attachments/assets/07831eec-9357-4144-9121-5556b81461a6" />
 ```
-
-3. 代码风格检查：
-```bash
-flake8
-```
-
-## 贡献指南
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
-
 ## 许可证
 
 本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
