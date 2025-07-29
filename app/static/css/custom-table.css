@@ -1,0 +1,76 @@
+/* 表格容器透明背景 */
+.table-container {
+    background: transparent !important;
+}
+
+/* 表格本身透明背景 */
+.custom-table {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+
+/* 强制移除所有表格元素的白色背景 */
+.custom-table,
+.custom-table tbody,
+.custom-table thead,
+.custom-table tfoot,
+.table,
+.table tbody,
+.table thead,
+.table tfoot {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* 表格容器强制透明 */
+.table-container,
+.table-container * {
+    background-color: transparent !important;
+}
+
+/* 强制表格行半透明背景样式 */
+.custom-table tbody tr {
+    background: rgba(255, 255, 255, 0.1) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.custom-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.custom-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.custom-table tbody tr:nth-child(even):hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+    background-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* 更强的选择器 */
+table.custom-table tbody tr {
+    background: rgba(255, 255, 255, 0.1) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+table.custom-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* 最强的选择器 */
+tr {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.custom-table tbody tr td {
+    background: transparent !important;
+    background-color: transparent !important;
+} 
