@@ -91,7 +91,6 @@ frpc-web/
 │   └── utils/             # 工具函数
 ├── data/                  # 数据存储目录
 ├── logs/                  # 日志目录
-├── tests/                 # 测试文件
 ├── .env.example          # 环境变量示例
 ├── .gitignore            # Git 忽略文件
 ├── docker-compose.yml    # Docker 编排配置
