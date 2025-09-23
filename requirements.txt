@@ -7,7 +7,6 @@ Flask-WTF==1.2.1
 WTForms==3.1.2
 python-dotenv==1.0.1
 requests==2.31.0
-gunicorn==21.2.0
 eventlet==0.35.2
 Werkzeug==3.0.1
 Jinja2==3.1.2
@@ -18,7 +17,6 @@ urllib3==2.0.7
 certifi==2023.7.22
 charset-normalizer==3.3.2
 idna==3.4
-python-multipart==0.0.6
 SQLAlchemy==2.0.27
 alembic==1.12.1
 email-validator==2.1.0.post1

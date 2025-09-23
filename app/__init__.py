@@ -2,11 +2,8 @@ from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
-from app.websocket import sock  # 导入 WebSocket
 import os
 from datetime import timedelta
-from flask_sock import Sock
-from app.main.routes import sock
 import logging
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
@@ -27,11 +24,29 @@ def create_app():
     
     # 配置
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///frpc.db'
+    # 统一并规范化数据库路径：优先用环境变量，默认 /app/data/frpc.db
+    db_uri = os.getenv('DATABASE_URL', 'sqlite:///data/frpc.db')
+    # 若是相对路径的 sqlite（sqlite:///相对路径），转为绝对路径，避免工作目录差异导致打不开文件
+    if db_uri.startswith('sqlite:///') and not db_uri.startswith('sqlite:////'):
+        rel_path = db_uri.replace('sqlite:///', '', 1)
+        abs_path = os.path.abspath(os.path.join(os.getcwd(), rel_path))
+        db_uri = f'sqlite:///{abs_path}'
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)  # 设置 session 有效期为1小时
     app.config['JSON_AS_ASCII'] = False  # 允许 JSON 响应包含非 ASCII 字符
     app.config['JSONIFY_MIMETYPE'] = 'application/json'  # 设置 JSON 响应的 MIME 类型
+
+    # 会话 Cookie 安全配置（从环境变量读取，给出安全默认）
+    def _env_bool(name: str, default: str) -> bool:
+        return str(os.getenv(name, default)).lower() in ('1', 'true', 'yes', 'on')
+    app.config.update(
+        SESSION_COOKIE_SECURE=_env_bool('SESSION_COOKIE_SECURE', 'False'),
+        SESSION_COOKIE_HTTPONLY=_env_bool('SESSION_COOKIE_HTTPONLY', 'True'),
+        SESSION_COOKIE_SAMESITE=os.getenv('SESSION_COOKIE_SAMESITE', 'Lax'),
+        REMEMBER_COOKIE_SECURE=_env_bool('REMEMBER_COOKIE_SECURE', 'False'),
+        REMEMBER_COOKIE_HTTPONLY=_env_bool('REMEMBER_COOKIE_HTTPONLY', 'True'),
+    )
     
     # 添加错误处理
     @app.errorhandler(404)
@@ -100,11 +115,25 @@ def create_app():
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
-    sock.init_app(app)  # 初始化 WebSocket
+    # 延迟导入，避免循环依赖，并初始化 WebSocket
+    from app.main.routes import sock
+    sock.init_app(app)
     
     # 设置登录视图
     login_manager.login_view = 'auth.login'
     login_manager.login_message = '请先登录'
+
+    @login_manager.unauthorized_handler
+    def handle_unauthorized():
+        from flask import request, redirect, url_for
+        # 如果是 API 请求或 Ajax 请求，返回 401 JSON；否则重定向到登录页
+        accepts_json = request.accept_mimetypes.best == 'application/json' or \
+                        request.headers.get('Accept', '').startswith('application/json') or \
+                        request.is_json or \
+                        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        if accepts_json:
+            return jsonify({'error': 'Unauthorized', 'message': '请先登录'}), 401
+        return redirect(url_for('auth.login'))
     
     # 添加会话验证
     @login_manager.user_loader

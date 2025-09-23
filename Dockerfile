@@ -31,8 +31,8 @@ ENV FLASK_APP=run.py
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
-# 暴露端口
-EXPOSE 5000
+# 暴露端口（与 WEB_PORT 保持一致）
+EXPOSE 8001
 
 # 启动命令
 CMD ["python", "run.py"] 

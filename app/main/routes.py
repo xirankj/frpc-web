@@ -151,6 +151,11 @@ def broadcast_download_status():
 def index():
     return render_template('main/index.html')
 
+# 健康检查端点（无需登录）
+@bp.route('/health')
+def health():
+    return jsonify({'status': 'ok'}), 200
+
 @bp.route('/save', methods=['POST'])
 @login_required
 def save_frpc_config():
@@ -263,51 +268,151 @@ def check_frpc():
         }), 500
 
 def download_and_extract():
+    """
+    下载 frp 最新版本的 linux_amd64 发行包，并解压出 frpc 可执行文件到项目根目录。
+    解压与存放路径、权限处理保持与旧逻辑一致。
+    优先使用 GitHub Releases API 获取最新版本；若失败，回退到解析 releases/latest 页面。
+    同时通过 WebSocket 广播简单下载进度信息。
+    """
     import requests
     import tarfile
     import os
     import shutil
-    url = "https://github.com/fatedier/frp/releases/download/v0.62.1/frp_0.62.1_linux_amd64.tar.gz"
-    filename = "frp_0.62.1_linux_amd64.tar.gz"
+    import re
+    from urllib.parse import urlparse
+
+    global download_status
+
+    def set_progress(message: str, completed: bool = False, error: bool = False, percent: float | None = None):
+        """更新全局下载状态并广播"""
+        try:
+            download_status['is_downloading'] = not completed and not error
+            download_status['progress'] = message
+            download_status['completed'] = completed
+            download_status['error'] = error
+            download_status['error_message'] = message if error else ''
+            broadcast_download_status()
+        except Exception:
+            # 广播异常不应影响主流程
+            pass
+
+    def get_latest_linux_amd64_from_api():
+        api = 'https://api.github.com/repos/fatedier/frp/releases/latest'
+        headers = {
+            'Accept': 'application/vnd.github+json',
+            'User-Agent': 'frpc-manager'
+        }
+        resp = requests.get(api, headers=headers, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        tag_name = data.get('tag_name')  # e.g. v0.62.1
+        assets = data.get('assets', [])
+        for a in assets:
+            name = a.get('name', '')
+            if name.endswith('linux_amd64.tar.gz'):
+                return a.get('browser_download_url'), name, tag_name
+        # 没有找到匹配资产
+        raise RuntimeError('最新版本中未找到 linux_amd64 资源')
+
+    def get_latest_linux_amd64_from_html():
+        # 访问 releases/latest，将被重定向到 /tag/vX.Y.Z
+        latest_url = 'https://github.com/fatedier/frp/releases/latest'
+        resp = requests.get(latest_url, allow_redirects=True, timeout=15, headers={'User-Agent': 'frpc-manager'})
+        resp.raise_for_status()
+        # 取最终 URL 的 tag
+        final = resp.url  # .../releases/tag/v0.62.1
+        tag = final.rstrip('/').split('/')[-1]
+        if not tag.startswith('v'):
+            # 尝试从页面内容解析
+            m = re.search(r'/releases/tag/(v\d+\.\d+\.\d+)', resp.text)
+            if not m:
+                raise RuntimeError('无法解析最新版本号')
+            tag = m.group(1)
+        # 构造资源名和下载链接
+        name = f'frp_{tag.lstrip("v")}_linux_amd64.tar.gz'
+        url = f'https://github.com/fatedier/frp/releases/download/{tag}/{name}'
+        return url, name, tag
+
+    # 1) 获取最新下载链接
     try:
-        response = requests.get(url, stream=True)
-        response.raise_for_status()
-        with open(filename, 'wb') as file:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    file.write(chunk)
-        # 解压
+        url, filename, tag = get_latest_linux_amd64_from_api()
+    except Exception:
+        # API 失败时使用 HTML 解析回退
+        url, filename, tag = get_latest_linux_amd64_from_html()
+
+    try:
+        set_progress(f'开始下载最新版本 {tag} ...')
+        # 2) 下载文件
+        with requests.get(url, stream=True, timeout=60, headers={'User-Agent': 'frpc-manager'}) as response:
+            response.raise_for_status()
+            total = response.headers.get('Content-Length')
+            total = int(total) if total else None
+            downloaded = 0
+            with open(filename, 'wb') as file:
+                for chunk in response.iter_content(chunk_size=1024 * 256):
+                    if chunk:
+                        file.write(chunk)
+                        downloaded += len(chunk)
+                        if total:
+                            percent = downloaded * 100.0 / total
+                            set_progress(f'下载进度: {percent:.1f}%')
+        set_progress('下载完成，开始解压...')
+        # 3) 解压（安全校验，防路径穿越）
         with tarfile.open(filename, 'r:gz') as tar:
-            tar.extractall()
-        # 查找解压目录
+            def is_within_directory(directory: str, target: str) -> bool:
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+                return (abs_target + os.sep).startswith(abs_directory + os.sep)
+            for member in tar.getmembers():
+                member_path = os.path.join('.', member.name)
+                if not is_within_directory('.', member_path):
+                    set_progress('检测到压缩包包含非法路径，已终止', completed=True, error=True)
+                    return False, '压缩包包含非法路径'
+            tar.extractall(path='.')
+        # 4) 查找解压目录
         extracted_dir = None
         for item in os.listdir('.'):
             if item.startswith('frp_') and os.path.isdir(item):
                 extracted_dir = item
                 break
         if not extracted_dir:
+            set_progress('未找到解压目录', completed=True, error=True)
             return False, '未找到解压目录'
         frpc_path = os.path.join(extracted_dir, 'frpc')
         if not os.path.exists(frpc_path):
+            set_progress('未找到 frpc 文件', completed=True, error=True)
             return False, '未找到 frpc 文件'
-        # 移动 frpc 到根目录
+        # 5) 移动 frpc 到根目录（覆盖旧文件）
         if os.path.exists('frpc'):
-            os.remove('frpc')
+            try:
+                os.remove('frpc')
+            except Exception:
+                # 可能被占用，尝试重命名备份
+                try:
+                    os.rename('frpc', f'frpc.bak')
+                except Exception:
+                    pass
         shutil.move(frpc_path, 'frpc')
-        # 清理解压目录和压缩包
-        shutil.rmtree(extracted_dir)
-        os.remove(filename)
-        # 设置可执行权限（非Windows）
+        # 6) 清理解压目录和压缩包
+        try:
+            shutil.rmtree(extracted_dir)
+        finally:
+            if os.path.exists(filename):
+                os.remove(filename)
+        # 7) 设置可执行权限（非Windows）
         if os.name != 'nt':
             os.chmod('frpc', 0o755)
-        return True, '下载并解压完成，frpc 已放到根目录。'
+        set_progress(f'已下载最新版本 {tag} 并解压完成。', completed=True)
+        return True, f'已下载最新版本 {tag}，并解压完成。frpc 已放到根目录。'
     except Exception as e:
+        set_progress(f'下载或解压失败: {e}', completed=True, error=True)
         return False, f'下载或解压失败: {e}'
 
 @bp.route('/download-frpc', methods=['POST'])
 @login_required
 def download_frpc():
     global download_thread
+    global download_status
     try:
         # 如果已经在下载，返回错误
         if getattr(download_frpc, '_is_downloading', False):
@@ -316,18 +421,20 @@ def download_frpc():
                 'message': '已有下载任务正在进行'
             }), 400
         setattr(download_frpc, '_is_downloading', True)
+        # 重置下载状态
+        download_status['is_downloading'] = True
+        download_status['progress'] = '开始下载任务...'
+        download_status['completed'] = False
+        download_status['error'] = False
+        download_status['error_message'] = ''
         def run_download():
-            success, msg = download_and_extract()
-            setattr(download_frpc, '_last_result', (success, msg))
-            setattr(download_frpc, '_is_downloading', False)
+            try:
+                download_and_extract()
+            finally:
+                setattr(download_frpc, '_is_downloading', False)
         download_thread = threading.Thread(target=run_download, daemon=True)
         download_thread.start()
-        download_thread.join()  # 阻塞直到下载完成
-        success, msg = getattr(download_frpc, '_last_result', (False, '未知错误'))
-        if success:
-            return jsonify({'status': 'success', 'message': msg})
-        else:
-            return jsonify({'status': 'error', 'message': msg}), 500
+        return jsonify({'status': 'accepted', 'message': '下载任务已开始'}), 202
     except Exception as e:
         setattr(download_frpc, '_is_downloading', False)
         return jsonify({'status': 'error', 'message': str(e)}), 500

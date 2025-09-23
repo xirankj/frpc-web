@@ -15,8 +15,13 @@ class FrpcManager:
     def __init__(self):
         self.frpc_path = os.path.join(os.getcwd(), 'frpc')
         self.config_path = os.path.join(os.getcwd(), 'frpc.json')
-        self.log_path = os.path.join(os.getcwd(), 'logs', 'frpc.log')
+        # 将 frpc 日志输出目录与应用日志目录保持一致，或使用 FRPC_LOG_DIR
+        default_app_log_file = os.getenv('LOG_FILE', '/var/log/frpc-web/app.log')
+        inferred_log_dir = os.path.dirname(default_app_log_file) if default_app_log_file else os.path.join(os.getcwd(), 'logs')
+        self.log_dir = os.getenv('FRPC_LOG_DIR', inferred_log_dir)
+        self.log_path = os.path.join(self.log_dir, 'frpc.log')
         self.process = None
+        self.attached_pid = None
         self._ensure_log_dir()
         self.log_queue = queue.Queue()
         self.log_thread = None
@@ -28,7 +33,7 @@ class FrpcManager:
 
     def _ensure_log_dir(self):
         """确保日志目录存在"""
-        log_dir = os.path.dirname(self.log_path)
+        log_dir = self.log_dir if hasattr(self, 'log_dir') else os.path.dirname(self.log_path)
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
 
@@ -98,32 +103,20 @@ class FrpcManager:
                 return
 
     def _recover_process(self):
-        """尝试恢复进程信息"""
+        """尝试恢复进程信息（不创建新进程，仅附着到已存在的 frpc 进程）"""
         try:
+            self.attached_pid = None
             # 遍历所有进程，查找 frpc 进程
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
                     # 检查进程名称和命令行
                     if proc.info['name'] == 'frpc' and self.config_path in proc.info['cmdline']:
-                        # 找到匹配的进程
-                        self.process = subprocess.Popen(
-                            [self.frpc_path, '-c', self.config_path],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
-                            start_new_session=True
-                        )
-                        self.process.pid = proc.info['pid']  # 使用实际运行的进程 PID
-                        logger.info(f"恢复 frpc 进程信息，PID: {self.process.pid}")
-                        
-                        # 检查进程状态
-                        if self.is_running():
-                            logger.info("frpc 进程正在运行")
-                            # 添加恢复标记到日志
-                            with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                                log_file.write(f"\n=== frpc 服务恢复于 {time.strftime('%Y-%m-%d %H:%M:%S')}，PID: {self.process.pid} ===\n")
-                        else:
-                            logger.warning("frpc 进程已停止")
-                            self.process = None
+                        # 找到匹配的进程，仅记录 PID，不创建新进程
+                        self.attached_pid = proc.info['pid']
+                        logger.info(f"检测到已运行 frpc 进程，PID: {self.attached_pid}")
+                        # 添加恢复标记到日志
+                        with open(self.log_path, 'a', encoding='utf-8') as log_file:
+                            log_file.write(f"\n=== 附着到已运行 frpc 进程于 {time.strftime('%Y-%m-%d %H:%M:%S')}，PID: {self.attached_pid} ===\n")
                         break
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue

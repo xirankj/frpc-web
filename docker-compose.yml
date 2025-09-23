@@ -5,22 +5,13 @@ services:
     build: .
     container_name: frpc-web
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "${WEB_PORT:-8001}:8001"
     volumes:
       - ./data:/app/data
       - ./logs:/var/log/frpc-web
-    environment:
-      - TZ=Asia/Shanghai
-      - FLASK_APP=run.py
-      - FLASK_ENV=production
-      - WEB_PORT=8001
-      - DEFAULT_USERNAME=${DEFAULT_USERNAME:-admin}
-      - DEFAULT_PASSWORD=${DEFAULT_PASSWORD:-admin123}
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
-      - DATABASE_URL=${DATABASE_URL:-sqlite:///data/frpc.db}
-      - NETWORK_CHECK_INTERVAL=1800
-      - NETWORK_CHECK_HOSTS=8.8.8.8,114.114.114.114
-      - NETWORK_CHECK_TIMEOUT=5
+    env_file:
+      - .env
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
