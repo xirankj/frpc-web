@@ -28,6 +28,11 @@
 - 架构：容器镜像基于 linux/amd64（内置“下载 frpc”亦指向 linux_amd64 发行包）。其他架构请手动放置对应 `frpc` 可执行文件。
 - 手动运行（非容器）：Python 3.10+；建议在 Linux/WSL 环境运行（网络检查使用 `ping -c` 语法，Windows 原生命令参数不同）。
 
+## 界面截图
+<img width="2560" height="1219" alt="服务器配置" src="https://github.com/user-attachments/assets/5cd498d8-03f7-4f58-b693-417b434ad1a3" />
+<img width="2545" height="1219" alt="客户端配置" src="https://github.com/user-attachments/assets/bf096c12-9d1b-49d1-8cc9-7d8c2a65cf82" />
+<img width="2560" height="1219" alt="服务状态" src="https://github.com/user-attachments/assets/25811636-5aad-49d5-82f1-bb08ce8702de" />
+
 ## 部署（推荐：Docker Compose）
 
 1) 获取代码
