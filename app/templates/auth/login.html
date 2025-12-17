@@ -7,20 +7,33 @@
     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/bootstrap-icons.css') }}" rel="stylesheet">
     <style>
+        /* iOS 26 液态玻璃风格 - Liquid Glass Design */
         :root {
-            --primary-color: #4f46e5;
-            --primary-light: #6366f1;
-            --primary-dark: #3730a3;
-            --secondary-color: #f8fafc;
-            --text-color: #374151;
-            --text-light: #6b7280;
-            --border-color: #e5e7eb;
-            --error-color: #ef4444;
-            --success-color: #10b981;
-            --warning-color: #f59e0b;
-            --shadow-light: rgba(0, 0, 0, 0.05);
-            --shadow-medium: rgba(0, 0, 0, 0.1);
-            --shadow-heavy: rgba(0, 0, 0, 0.25);
+            --ios-blue: #007AFF;
+            --ios-blue-light: #5AC8FA;
+            --ios-green: #34C759;
+            --ios-red: #FF3B30;
+            --ios-orange: #FF9500;
+            --ios-gray: #8E8E93;
+            --ios-gray-light: #C7C7CC;
+            --ios-bg: #F2F2F7;
+            
+            /* 液态玻璃效果颜色 */
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --glass-shadow: rgba(0, 0, 0, 0.08);
+            --glass-glow: rgba(255, 255, 255, 0.9);
+            
+            /* 文字颜色 */
+            --text-primary: #1C1C1E;
+            --text-secondary: #3C3C43;
+            --text-tertiary: #8E8E93;
+            
+            /* 圆角 - iOS 26 使用更大圆角 */
+            --radius-sm: 12px;
+            --radius-md: 20px;
+            --radius-lg: 32px;
+            --radius-xl: 44px;
         }
 
         * {
@@ -31,176 +44,280 @@
 
         html, body {
             height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            /* iOS 26 风格渐变背景 */
+            background: linear-gradient(145deg, #E8F5FF 0%, #F0E6FF 35%, #FFE8F0 65%, #FFF5E6 100%);
             background-attachment: fixed;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-        }
-
-        .login-container {
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-        }
-
-        .login-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 60px var(--shadow-heavy);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             overflow: hidden;
         }
 
+        /* 背景装饰光晕 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(0, 122, 255, 0.15) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(175, 82, 222, 0.12) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 30%, rgba(255, 149, 0, 0.1) 0%, transparent 40%);
+            animation: floatBg 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes floatBg {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(2%, 2%) rotate(1deg); }
+            66% { transform: translate(-1%, 1%) rotate(-1deg); }
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* iOS 26 液态玻璃卡片 */
+        .login-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-radius: var(--radius-xl);
+            padding: 48px 40px;
+            box-shadow: 
+                0 8px 32px var(--glass-shadow),
+                0 0 0 1px var(--glass-border),
+                inset 0 1px 0 0 var(--glass-glow);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 液态玻璃光泽效果 */
         .login-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            pointer-events: none;
+        }
+
+        /* 卡片边缘光晕 */
+        .login-card::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: var(--radius-xl);
+            background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%, rgba(255,255,255,0.2) 100%);
+            z-index: -1;
+            pointer-events: none;
         }
 
         .brand-section {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 36px;
+            position: relative;
+            z-index: 1;
         }
 
+        /* iOS 26 风格图标 - 液态玻璃效果 */
         .brand-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-            border-radius: 16px;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--ios-blue) 0%, var(--ios-blue-light) 100%);
+            border-radius: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 20px;
-            box-shadow: 0 8px 32px rgba(79, 70, 229, 0.3);
+            box-shadow: 
+                0 12px 40px rgba(0, 122, 255, 0.35),
+                inset 0 2px 0 rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-icon::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 100%);
+            border-radius: 24px 24px 0 0;
         }
 
         .brand-icon i {
-            font-size: 28px;
+            font-size: 36px;
             color: white;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
         .brand-title {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 700;
-            color: var(--text-color);
+            color: var(--text-primary);
             margin-bottom: 8px;
             letter-spacing: -0.5px;
         }
 
         .brand-subtitle {
-            color: var(--text-light);
-            font-size: 16px;
+            color: var(--text-tertiary);
+            font-size: 17px;
             font-weight: 400;
         }
 
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             position: relative;
+            z-index: 1;
         }
 
         .form-label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: 600;
-            color: var(--text-color);
-            font-size: 14px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            letter-spacing: -0.2px;
         }
 
+        /* iOS 26 液态玻璃输入框 */
         .form-input {
             width: 100%;
-            padding: 16px 20px;
-            border: 2px solid var(--border-color);
-            border-radius: 12px;
-            font-size: 16px;
-            background: white;
-            transition: all 0.3s ease;
-            color: var(--text-color);
+            padding: 18px 22px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: var(--radius-md);
+            font-size: 17px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-primary);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+            border-color: var(--ios-blue);
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 
+                0 0 0 4px rgba(0, 122, 255, 0.15),
+                0 4px 16px rgba(0, 122, 255, 0.1);
+            transform: translateY(-1px);
         }
 
         .form-input::placeholder {
-            color: var(--text-light);
+            color: var(--text-tertiary);
             font-weight: 400;
         }
 
         .password-toggle {
             position: absolute;
-            right: 16px;
+            right: 18px;
             top: 50%;
             transform: translateY(-50%);
-            background: none;
+            background: rgba(142, 142, 147, 0.12);
             border: none;
-            color: var(--text-light);
+            color: var(--text-tertiary);
             cursor: pointer;
             font-size: 18px;
-            padding: 4px;
-            border-radius: 4px;
-            transition: color 0.2s ease;
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
         }
 
         .password-toggle:hover {
-            color: var(--primary-color);
+            color: var(--ios-blue);
+            background: rgba(0, 122, 255, 0.1);
         }
 
+        /* iOS 26 液态玻璃按钮 */
         .login-button {
             width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            padding: 18px;
+            background: linear-gradient(135deg, var(--ios-blue) 0%, #5856D6 100%);
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
+            border-radius: var(--radius-md);
+            font-size: 18px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
-            margin-top: 8px;
+            margin-top: 12px;
+            box-shadow: 
+                0 8px 24px rgba(0, 122, 255, 0.35),
+                inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            letter-spacing: -0.2px;
+        }
+
+        .login-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 100%);
+            border-radius: var(--radius-md) var(--radius-md) 0 0;
+            pointer-events: none;
         }
 
         .login-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(79, 70, 229, 0.4);
+            transform: translateY(-2px) scale(1.01);
+            box-shadow: 
+                0 12px 32px rgba(0, 122, 255, 0.45),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         .login-button:active {
-            transform: translateY(0);
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
         }
 
         .login-button:disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed;
             transform: none;
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.2);
         }
 
         .loading-spinner {
             display: inline-block;
             width: 20px;
             height: 20px;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
+            border: 2.5px solid rgba(255, 255, 255, 0.3);
+            border-top: 2.5px solid white;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
         }
 
         @keyframes spin {
@@ -208,31 +325,36 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* iOS 26 液态玻璃提示框 */
         .alert {
-            padding: 12px 16px;
-            border-radius: 8px;
+            padding: 14px 18px;
+            border-radius: var(--radius-md);
             margin-bottom: 20px;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             display: none;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            position: relative;
+            z-index: 1;
         }
 
         .alert-error {
-            background-color: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #dc2626;
+            background: rgba(255, 59, 48, 0.12);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+            color: var(--ios-red);
         }
 
         .alert-success {
-            background-color: #f0f9ff;
-            border: 1px solid #93c5fd;
-            color: #1d4ed8;
+            background: rgba(52, 199, 89, 0.12);
+            border: 1px solid rgba(52, 199, 89, 0.2);
+            color: var(--ios-green);
         }
 
         .alert-warning {
-            background-color: #fffbeb;
-            border: 1px solid #fed7aa;
-            color: #d97706;
+            background: rgba(255, 149, 0, 0.12);
+            border: 1px solid rgba(255, 149, 0, 0.2);
+            color: var(--ios-orange);
         }
 
         .new-password-section {
@@ -257,48 +379,130 @@
             text-align: center;
             margin-top: 32px;
             padding-top: 24px;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            position: relative;
+            z-index: 1;
         }
 
         .footer-link {
-            color: var(--primary-color);
+            color: var(--ios-blue);
             text-decoration: none;
             font-weight: 500;
-            font-size: 14px;
-            transition: color 0.2s ease;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
         }
 
         .footer-link:hover {
-            color: var(--primary-dark);
-            text-decoration: underline;
+            color: #0056CC;
+            background: rgba(0, 122, 255, 0.08);
         }
 
+        /* iOS 26 液态玻璃系统信息 */
         .system-info {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            color: var(--text-light);
-            border: 1px solid var(--border-color);
+            bottom: 24px;
+            right: 24px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(30px) saturate(150%);
+            -webkit-backdrop-filter: blur(30px) saturate(150%);
+            padding: 10px 16px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            color: var(--text-tertiary);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        /* 响应式设计 */
+        /* iOS 26 液态玻璃主题切换按钮 */
+        .theme-toggle {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--glass-bg);
+            backdrop-filter: blur(30px) saturate(150%);
+            -webkit-backdrop-filter: blur(30px) saturate(150%);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 
+                0 4px 16px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--ios-orange);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 
+                0 8px 24px rgba(0, 0, 0, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
+        }
+
+        /* 深色模式下的主题切换按钮 */
+        body.dark-mode .theme-toggle {
+            background: rgba(44, 44, 46, 0.8);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: var(--ios-blue-light);
+        }
+
+        /* iOS 26 响应式设计 */
         @media (max-width: 480px) {
             body {
-                padding: 10px;
+                padding: 16px;
             }
             
             .login-card {
-                padding: 30px 20px;
-                border-radius: 16px;
+                padding: 36px 24px;
+                border-radius: var(--radius-lg);
+            }
+
+            .brand-icon {
+                width: 72px;
+                height: 72px;
+                border-radius: 20px;
+            }
+
+            .brand-icon i {
+                font-size: 32px;
             }
             
             .brand-title {
-                font-size: 24px;
+                font-size: 28px;
+            }
+
+            .brand-subtitle {
+                font-size: 15px;
+            }
+
+            .form-input {
+                padding: 16px 18px;
+                font-size: 16px;
+                border-radius: 16px;
+            }
+
+            .login-button {
+                padding: 16px;
+                font-size: 17px;
+                border-radius: 16px;
             }
             
             .system-info {
@@ -308,15 +512,25 @@
 
         @media (max-width: 360px) {
             .login-card {
-                padding: 24px 16px;
+                padding: 28px 20px;
+                border-radius: 28px;
+            }
+
+            .brand-icon {
+                width: 64px;
+                height: 64px;
+            }
+
+            .brand-title {
+                font-size: 24px;
             }
         }
 
-        /* 动画效果 */
+        /* iOS 26 流畅动画效果 */
         @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translateY(30px);
+                transform: translateY(24px);
             }
             to {
                 opacity: 1;
@@ -327,7 +541,7 @@
         @keyframes fadeInScale {
             from {
                 opacity: 0;
-                transform: scale(0.9);
+                transform: scale(0.92);
             }
             to {
                 opacity: 1;
@@ -338,116 +552,258 @@
         @keyframes pulse {
             0%, 100% {
                 transform: scale(1);
+                opacity: 1;
             }
             50% {
-                transform: scale(1.05);
+                transform: scale(1.15);
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes glowPulse {
+            0%, 100% {
+                box-shadow: 0 0 12px rgba(52, 199, 89, 0.6);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(52, 199, 89, 0.8);
             }
         }
 
         .login-card {
-            animation: fadeInScale 0.6s ease-out;
+            animation: fadeInScale 0.7s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .brand-icon {
-            animation: fadeInUp 0.8s ease-out 0.2s both;
+            animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both;
         }
 
         .brand-title {
-            animation: fadeInUp 0.8s ease-out 0.4s both;
+            animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.25s both;
         }
 
         .brand-subtitle {
-            animation: fadeInUp 0.8s ease-out 0.6s both;
+            animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.35s both;
         }
 
         .form-group {
-            animation: fadeInUp 0.8s ease-out both;
+            animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
         }
 
-        .form-group:nth-child(1) { animation-delay: 0.8s; }
-        .form-group:nth-child(2) { animation-delay: 1.0s; }
-        .form-group:nth-child(3) { animation-delay: 1.2s; }
-        .form-group:nth-child(4) { animation-delay: 1.4s; }
+        .form-group:nth-child(1) { animation-delay: 0.4s; }
+        .form-group:nth-child(2) { animation-delay: 0.5s; }
+        .form-group:nth-child(3) { animation-delay: 0.6s; }
+        .form-group:nth-child(4) { animation-delay: 0.7s; }
 
         .login-button {
-            animation: fadeInUp 0.8s ease-out 1.6s both;
+            animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.7s both;
         }
 
         .footer-section {
-            animation: fadeInUp 0.8s ease-out 1.8s both;
+            animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.8s both;
         }
 
-        /* 连接状态指示器 */
+        .connection-indicator {
+            animation: pulse 2s ease-in-out infinite, glowPulse 2s ease-in-out infinite;
+        }
+
+        /* iOS 26 连接状态指示器 */
         .connection-indicator {
             position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 12px;
-            height: 12px;
+            top: 20px;
+            right: 20px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: var(--success-color);
+            background: var(--ios-green);
+            box-shadow: 0 0 12px rgba(52, 199, 89, 0.6);
             animation: pulse 2s infinite;
+            z-index: 2;
         }
 
         .connection-indicator.offline {
-            background: var(--error-color);
+            background: var(--ios-red);
+            box-shadow: 0 0 12px rgba(255, 59, 48, 0.6);
         }
 
-        /* 密码强度指示器 */
+        /* iOS 26 密码强度指示器 */
         .password-strength {
-            margin-top: 8px;
+            margin-top: 10px;
             display: flex;
-            gap: 4px;
-            height: 4px;
+            gap: 6px;
+            height: 5px;
         }
 
         .strength-bar {
             flex: 1;
-            background: var(--border-color);
-            border-radius: 2px;
-            transition: background-color 0.3s ease;
+            background: rgba(142, 142, 147, 0.2);
+            border-radius: 3px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .strength-bar.active.weak { background: var(--error-color); }
-        .strength-bar.active.fair { background: var(--warning-color); }
-        .strength-bar.active.good { background: var(--success-color); }
-        .strength-bar.active.strong { background: #059669; }
+        .strength-bar.active.weak { background: var(--ios-red); }
+        .strength-bar.active.fair { background: var(--ios-orange); }
+        .strength-bar.active.good { background: #30D158; }
+        .strength-bar.active.strong { background: var(--ios-green); }
 
-        /* 表单验证状态 */
+        /* iOS 26 表单验证状态 */
         .form-input.valid {
-            border-color: var(--success-color);
-            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+            border-color: var(--ios-green);
+            box-shadow: 
+                0 0 0 4px rgba(52, 199, 89, 0.12),
+                0 2px 8px rgba(52, 199, 89, 0.1);
         }
 
         .form-input.invalid {
-            border-color: var(--error-color);
-            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+            border-color: var(--ios-red);
+            box-shadow: 
+                0 0 0 4px rgba(255, 59, 48, 0.12),
+                0 2px 8px rgba(255, 59, 48, 0.1);
         }
 
-        /* 深色模式支持 */
+        /* iOS 26 深色模式支持 - 自动检测 */
         @media (prefers-color-scheme: dark) {
-            :root {
-                --secondary-color: #1f2937;
-                --text-color: #f9fafb;
-                --text-light: #d1d5db;
-                --border-color: #374151;
+            body:not(.light-mode) {
+                --glass-bg: rgba(44, 44, 46, 0.75);
+                --glass-border: rgba(255, 255, 255, 0.1);
+                --glass-shadow: rgba(0, 0, 0, 0.3);
+                --glass-glow: rgba(255, 255, 255, 0.05);
+                --text-primary: #FFFFFF;
+                --text-secondary: #EBEBF5;
+                --text-tertiary: #8E8E93;
+                background: linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 50%, #1C1C1E 100%);
+            }
+
+            body:not(.light-mode)::before {
+                background: radial-gradient(circle at 30% 20%, rgba(0, 122, 255, 0.2) 0%, transparent 50%),
+                            radial-gradient(circle at 70% 80%, rgba(175, 82, 222, 0.15) 0%, transparent 50%);
             }
             
-            .login-card {
-                background: #1f2937;
-                border-color: #374151;
+            body:not(.light-mode) .login-card {
+                background: rgba(44, 44, 46, 0.75);
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+
+            body:not(.light-mode) .login-card::before {
+                background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%);
             }
             
-            .form-input {
-                background: #374151;
-                border-color: #4b5563;
-                color: #f9fafb;
+            body:not(.light-mode) .form-input {
+                background: rgba(118, 118, 128, 0.24);
+                border-color: rgba(255, 255, 255, 0.1);
+                color: #FFFFFF;
+            }
+
+            body:not(.light-mode) .form-input:focus {
+                background: rgba(118, 118, 128, 0.32);
+            }
+
+            body:not(.light-mode) .form-input::placeholder {
+                color: rgba(235, 235, 245, 0.3);
             }
             
-            .system-info {
-                background: rgba(31, 41, 55, 0.9);
-                border-color: #374151;
+            body:not(.light-mode) .system-info {
+                background: rgba(44, 44, 46, 0.8);
+                border-color: rgba(255, 255, 255, 0.1);
             }
+
+            body:not(.light-mode) .brand-title {
+                color: #FFFFFF;
+            }
+
+            body:not(.light-mode) .brand-subtitle {
+                color: #8E8E93;
+            }
+
+            body:not(.light-mode) .footer-section {
+                border-top-color: rgba(255, 255, 255, 0.1);
+            }
+
+            body:not(.light-mode) .password-toggle {
+                background: rgba(118, 118, 128, 0.24);
+                color: rgba(235, 235, 245, 0.6);
+            }
+
+            body:not(.light-mode) .form-label {
+                color: #EBEBF5;
+            }
+        }
+
+        /* 手动深色模式 - 通过 class 切换 */
+        body.dark-mode {
+            --glass-bg: rgba(44, 44, 46, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-shadow: rgba(0, 0, 0, 0.3);
+            --glass-glow: rgba(255, 255, 255, 0.05);
+            --text-primary: #FFFFFF;
+            --text-secondary: #EBEBF5;
+            --text-tertiary: #8E8E93;
+            background: linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 50%, #1C1C1E 100%) !important;
+        }
+
+        body.dark-mode::before {
+            background: radial-gradient(circle at 30% 20%, rgba(0, 122, 255, 0.2) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(175, 82, 222, 0.15) 0%, transparent 50%) !important;
+        }
+        
+        body.dark-mode .login-card {
+            background: rgba(44, 44, 46, 0.75);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .login-card::before {
+            background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 100%);
+        }
+        
+        body.dark-mode .form-input {
+            background: rgba(118, 118, 128, 0.24);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #FFFFFF;
+        }
+
+        body.dark-mode .form-input:focus {
+            background: rgba(118, 118, 128, 0.32);
+        }
+
+        body.dark-mode .form-input::placeholder {
+            color: rgba(235, 235, 245, 0.3);
+        }
+        
+        body.dark-mode .system-info {
+            background: rgba(44, 44, 46, 0.8);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .brand-title {
+            color: #FFFFFF;
+        }
+
+        body.dark-mode .brand-subtitle {
+            color: #8E8E93;
+        }
+
+        body.dark-mode .footer-section {
+            border-top-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body.dark-mode .password-toggle {
+            background: rgba(118, 118, 128, 0.24);
+            color: rgba(235, 235, 245, 0.6);
+        }
+
+        body.dark-mode .form-label {
+            color: #EBEBF5;
+        }
+
+        body.dark-mode .alert-error {
+            background: rgba(255, 59, 48, 0.2);
+        }
+
+        body.dark-mode .alert-success {
+            background: rgba(52, 199, 89, 0.2);
+        }
+
+        body.dark-mode .alert-warning {
+            background: rgba(255, 149, 0, 0.2);
         }
     </style>
 </head>
@@ -562,11 +918,83 @@
         </div>
     </div>
 
+    <!-- 夜间模式切换按钮 -->
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题">
+        <i class="bi bi-sun-fill" id="themeIcon"></i>
+    </button>
+
     <!-- 系统信息 -->
     <div class="system-info">
         <i class="bi bi-shield-check"></i> 安全连接
     </div>
     <script>
+        // ==================== 主题切换功能 ====================
+        // 初始化主题
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.body.classList.add('dark-mode');
+                updateThemeIcon(true);
+            } else if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                updateThemeIcon(false);
+            } else {
+                updateThemeIcon(prefersDark);
+            }
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const themeToggle = document.getElementById('themeToggle');
+            
+            // 添加动画效果
+            themeToggle.style.transform = 'scale(0.8) rotate(180deg)';
+            
+            setTimeout(() => {
+                if (isDark) {
+                    document.body.classList.remove('dark-mode');
+                    document.body.classList.add('light-mode');
+                    localStorage.setItem('theme', 'light');
+                    updateThemeIcon(false);
+                } else {
+                    document.body.classList.add('dark-mode');
+                    document.body.classList.remove('light-mode');
+                    localStorage.setItem('theme', 'dark');
+                    updateThemeIcon(true);
+                }
+                themeToggle.style.transform = 'scale(1) rotate(0deg)';
+            }, 150);
+        }
+
+        // 更新主题图标
+        function updateThemeIcon(isDark) {
+            const icon = document.getElementById('themeIcon');
+            if (icon) {
+                icon.className = isDark ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+            }
+        }
+
+        // 监听系统主题变化
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('theme')) {
+                if (e.matches) {
+                    document.body.classList.add('dark-mode');
+                    document.body.classList.remove('light-mode');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    document.body.classList.add('light-mode');
+                }
+                updateThemeIcon(e.matches);
+            }
+        });
+
+        // 页面加载时初始化主题
+        initTheme();
+
+        // ==================== 登录功能 ====================
         // 全局状态
         let isChangingPassword = false;
         
