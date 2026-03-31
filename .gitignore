@@ -34,10 +34,17 @@ ENV/
 # 项目特定
 data/
 logs/
+backup/
 *.db
 *.log
 .env
+docs/.demo-runtime/
+login/
 
 # Docker
 .docker/
 docker-compose.override.yml 
+
+# 测试与缓存
+.pytest_cache/
+.coverage

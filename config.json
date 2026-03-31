@@ -1,18 +1,28 @@
 {
-  "serverAddr": "xxx.xxx.xxx.xxx",
-  "serverPort": 8024,
+  "serverAddr": "frps.example.com",
+  "serverPort": 7000,
   "auth": {
     "method": "token",
-    "token": "xxxxxxxxxxxxxxxxxxxxxxxxx"
+    "token": "replace-with-your-token"
   },
   "proxies": [
     {
       "enabled": true,
-      "localIP": "xxx.xxx.xxx.xxx",
-      "localPort": 8001,
       "name": "frpc-web",
-      "remotePort": 8080,
-      "type": "tcp"
+      "type": "tcp",
+      "localIP": "127.0.0.1",
+      "localPort": 8001,
+      "remotePort": 8080
+    },
+    {
+      "enabled": true,
+      "name": "demo-site",
+      "type": "http",
+      "localIP": "127.0.0.1",
+      "localPort": 3000,
+      "customDomains": [
+        "demo.example.com"
+      ]
     }
   ]
 }

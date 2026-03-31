@@ -3,22 +3,36 @@ import subprocess
 import signal
 import psutil
 import logging
+import requests
 from pathlib import Path
 import threading
 import time
 import queue
 import re
+from app.runtime_settings import load_runtime_settings, resolve_runtime_path
 
 logger = logging.getLogger(__name__)
 
 class FrpcManager:
+    VERSION_CACHE_TTL = 60
+    VERSION_PATTERN = re.compile(r'v?\d+\.\d+\.\d+(?:[-+._][0-9A-Za-z]+)*')
+
     def __init__(self):
-        self.frpc_path = os.path.join(os.getcwd(), 'frpc')
-        self.config_path = os.path.join(os.getcwd(), 'frpc.json')
-        # 将 frpc 日志输出目录与应用日志目录保持一致，或使用 FRPC_LOG_DIR
-        default_app_log_file = os.getenv('LOG_FILE', '/var/log/frpc-web/app.log')
-        inferred_log_dir = os.path.dirname(default_app_log_file) if default_app_log_file else os.path.join(os.getcwd(), 'logs')
-        self.log_dir = os.getenv('FRPC_LOG_DIR', inferred_log_dir)
+        runtime_settings = load_runtime_settings()
+        self.frpc_work_dir = runtime_settings.frpc_work_dir
+        self.frpc_path = runtime_settings.frpc_binary_path
+        self.config_path = runtime_settings.frpc_config_path
+        # 将 frpc 日志输出目录与应用日志目录保持一致，并兼容容器路径映射
+        configured_log_dir = os.getenv('FRPC_LOG_DIR')
+        if configured_log_dir:
+            self.log_dir = resolve_runtime_path(
+                configured_log_dir,
+                runtime_settings.base_dir,
+                data_dir=runtime_settings.data_dir,
+                logs_dir=runtime_settings.logs_dir
+            )
+        else:
+            self.log_dir = runtime_settings.logs_dir
         self.log_path = os.path.join(self.log_dir, 'frpc.log')
         self.process = None
         self.attached_pid = None
@@ -28,8 +42,237 @@ class FrpcManager:
         self.stop_log_thread = False
         self.error_state = False
         self.error_message = ""
+        self._version_cache_lock = threading.Lock()
+        self._version_cache = {
+            'frpc': {
+                'value': '待检测',
+                'hint': '等待版本检测',
+                'checked_at': 0.0,
+                'fingerprint': None,
+            },
+            'frps': {
+                'value': '待检测',
+                'hint': '等待版本检测',
+                'checked_at': 0.0,
+                'fingerprint': None,
+            }
+        }
         self._start_log_thread()  # 在初始化时就启动日志线程
         self._recover_process()  # 尝试恢复进程信息
+
+    def _append_log(self, message: str):
+        """安全地追加一行日志，避免错误处理再次抛出异常。"""
+        try:
+            with open(self.log_path, 'a', encoding='utf-8') as log_file:
+                log_file.write(message)
+        except Exception as e:
+            logger.warning(f"写入 frpc 日志失败: {str(e)}")
+
+    @classmethod
+    def _normalize_version(cls, value: str) -> str:
+        """统一格式化版本号展示。"""
+        candidate = (value or '').strip()
+        if not candidate:
+            return ''
+        if re.fullmatch(r'\d+\.\d+\.\d+(?:[-+._][0-9A-Za-z]+)*', candidate):
+            return f'v{candidate}'
+        return candidate
+
+    @classmethod
+    def _extract_version_from_text(cls, text: str) -> str:
+        """从命令输出或 HTTP 响应中提取版本号。"""
+        if not text:
+            return ''
+        match = cls.VERSION_PATTERN.search(text)
+        if match:
+            return cls._normalize_version(match.group(0))
+        return ''
+
+    def _get_cached_version(self, key: str, fingerprint: str | None, force_refresh: bool = False):
+        """读取版本缓存，避免频繁执行命令或探测远端。"""
+        with self._version_cache_lock:
+            cache = self._version_cache[key]
+            if (
+                not force_refresh
+                and cache['fingerprint'] == fingerprint
+                and (time.time() - cache['checked_at']) < self.VERSION_CACHE_TTL
+            ):
+                return {
+                    'value': cache['value'],
+                    'hint': cache['hint']
+                }
+        return None
+
+    def _set_cached_version(self, key: str, fingerprint: str | None, value: str, hint: str):
+        """更新版本缓存。"""
+        with self._version_cache_lock:
+            self._version_cache[key] = {
+                'value': value,
+                'hint': hint,
+                'checked_at': time.time(),
+                'fingerprint': fingerprint,
+            }
+        return {
+            'value': value,
+            'hint': hint
+        }
+
+    def get_local_version_info(self, force_refresh: bool = False):
+        """获取本地 frpc 版本。"""
+        if not os.path.exists(self.frpc_path):
+            return self._set_cached_version(
+                'frpc',
+                'missing',
+                '未安装',
+                '未找到本地 frpc 可执行文件'
+            )
+
+        try:
+            fingerprint = f"{self.frpc_path}:{os.path.getmtime(self.frpc_path)}"
+        except OSError:
+            fingerprint = self.frpc_path
+
+        cached = self._get_cached_version('frpc', fingerprint, force_refresh=force_refresh)
+        if cached:
+            return cached
+
+        commands = (
+            [self.frpc_path, 'version'],
+            [self.frpc_path, '--version'],
+            [self.frpc_path, '-v'],
+        )
+        last_error = ''
+
+        for command in commands:
+            try:
+                result = subprocess.run(
+                    command,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    cwd=self.frpc_work_dir
+                )
+                output = '\n'.join(
+                    chunk for chunk in (result.stdout, result.stderr) if chunk
+                ).strip()
+                version = self._extract_version_from_text(output)
+                if version:
+                    return self._set_cached_version(
+                        'frpc',
+                        fingerprint,
+                        version,
+                        '来自本地 frpc 可执行文件'
+                    )
+                if result.returncode == 0 and output:
+                    return self._set_cached_version(
+                        'frpc',
+                        fingerprint,
+                        output.splitlines()[0].strip(),
+                        '来自本地 frpc 可执行文件原始输出'
+                    )
+            except Exception as e:
+                last_error = str(e)
+
+        if last_error:
+            hint = f'执行版本命令失败：{last_error}'
+        else:
+            hint = '本地 frpc 未输出可识别的版本号'
+        return self._set_cached_version('frpc', fingerprint, '未知', hint)
+
+    @classmethod
+    def _extract_version_from_json(cls, payload):
+        """从 JSON 响应中递归查找版本号字段。"""
+        if isinstance(payload, dict):
+            for key in ('frpsVersion', 'serverVersion', 'version'):
+                value = payload.get(key)
+                if isinstance(value, str) and value.strip():
+                    normalized = cls._extract_version_from_text(value) or value.strip()
+                    if normalized:
+                        return normalized
+            for value in payload.values():
+                nested = cls._extract_version_from_json(value)
+                if nested:
+                    return nested
+        elif isinstance(payload, list):
+            for item in payload:
+                nested = cls._extract_version_from_json(item)
+                if nested:
+                    return nested
+        elif isinstance(payload, str):
+            return cls._extract_version_from_text(payload)
+        return ''
+
+    def get_server_version_info(self, force_refresh: bool = False):
+        """通过可选的版本地址探测远端 frps 版本。"""
+        version_url = (os.getenv('FRPS_VERSION_URL') or '').strip()
+        if not version_url:
+            return self._set_cached_version(
+                'frps',
+                'not-configured',
+                '未配置',
+                '未配置 FRPS_VERSION_URL，无法直接探测服务端 frps 版本'
+            )
+
+        cached = self._get_cached_version('frps', version_url, force_refresh=force_refresh)
+        if cached:
+            return cached
+
+        username = (os.getenv('FRPS_VERSION_USERNAME') or '').strip()
+        password = os.getenv('FRPS_VERSION_PASSWORD') or ''
+        auth = (username, password) if username else None
+
+        try:
+            response = requests.get(
+                version_url,
+                timeout=5,
+                auth=auth,
+                headers={'Accept': 'application/json, text/plain, text/html;q=0.9'}
+            )
+            response.raise_for_status()
+
+            version = ''
+            content_type = (response.headers.get('Content-Type') or '').lower()
+            if 'json' in content_type:
+                try:
+                    version = self._extract_version_from_json(response.json())
+                except ValueError:
+                    version = ''
+
+            if not version:
+                version = self._extract_version_from_text(response.text)
+
+            if version:
+                return self._set_cached_version(
+                    'frps',
+                    version_url,
+                    version,
+                    '来自 FRPS_VERSION_URL 版本探测'
+                )
+
+            return self._set_cached_version(
+                'frps',
+                version_url,
+                '未知',
+                '版本地址可访问，但响应中未找到可识别的版本号'
+            )
+        except requests.RequestException as e:
+            return self._set_cached_version(
+                'frps',
+                version_url,
+                '不可达',
+                f'访问 FRPS_VERSION_URL 失败：{str(e)}'
+            )
+
+    def get_version_summary(self):
+        """汇总本地 frpc 与远端 frps 版本信息。"""
+        local_version = self.get_local_version_info()
+        server_version = self.get_server_version_info()
+        return {
+            'frpc_version': local_version['value'],
+            'frpc_version_hint': local_version['hint'],
+            'frps_version': server_version['value'],
+            'frps_version_hint': server_version['hint'],
+        }
 
     def _ensure_log_dir(self):
         """确保日志目录存在"""
@@ -77,7 +320,7 @@ class FrpcManager:
         except Exception as e:
             logger.error(f"读取日志失败: {str(e)}")
             self.error_state = True
-            self.error_message = f"日志读取失败: {str(e)}"
+            self.error_message = "日志读取失败，请检查日志目录"
 
     def _check_error_state(self, log_line):
         """检查日志中的错误状态"""
@@ -136,6 +379,18 @@ class FrpcManager:
                 logger.warning("frpc 服务已经在运行")
                 return False, "frpc 服务已经在运行"
 
+            if not os.path.exists(self.frpc_path):
+                self.error_state = True
+                self.error_message = "未找到 frpc 可执行文件"
+                logger.error(f"{self.error_message}: {self.frpc_path}")
+                return False, "未找到 frpc 可执行文件，请先下载或上传"
+
+            if not os.path.exists(self.config_path):
+                self.error_state = True
+                self.error_message = "未找到 frpc 配置文件"
+                logger.error(f"{self.error_message}: {self.config_path}")
+                return False, "未找到 frpc 配置文件，请先保存配置"
+
             # 确保 frpc 可执行
             if not os.access(self.frpc_path, os.X_OK):
                 os.chmod(self.frpc_path, 0o755)
@@ -153,6 +408,7 @@ class FrpcManager:
                     [self.frpc_path, '-c', self.config_path],
                     stdout=log_file,
                     stderr=log_file,
+                    cwd=self.frpc_work_dir,
                     start_new_session=True  # 使用新的会话组
                 )
 
@@ -167,7 +423,7 @@ class FrpcManager:
                 return False, "服务启动失败，请检查日志"
 
             if self.error_state:
-                return False, f"服务启动失败: {self.error_message}"
+                return False, "服务启动失败，请检查日志"
 
             logger.info(f"frpc 服务已启动，PID: {self.process.pid}")
             with open(self.log_path, 'a', encoding='utf-8') as log_file:
@@ -175,12 +431,11 @@ class FrpcManager:
             return True, f"frpc 服务已启动，PID: {self.process.pid}"
 
         except Exception as e:
-            logger.error(f"启动 frpc 服务失败: {str(e)}")
+            logger.exception(f"启动 frpc 服务失败: {str(e)}")
             self.error_state = True
-            self.error_message = str(e)
-            with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                log_file.write(f"\n[错误] 启动失败: {str(e)}\n")
-            return False, f"启动失败: {str(e)}"
+            self.error_message = "启动失败，请检查日志"
+            self._append_log(f"\n[错误] 启动失败，请查看应用日志获取详情\n")
+            return False, "启动失败，请检查日志或稍后重试"
 
     def stop(self):
         """停止 frpc 服务"""
@@ -207,10 +462,9 @@ class FrpcManager:
                 logger.warning("frpc 服务未运行")
                 return False, "frpc 服务未运行"
         except Exception as e:
-            logger.error(f"停止 frpc 服务失败: {str(e)}")
-            with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [错误] 停止失败: {str(e)}\n")
-            return False, f"停止失败: {str(e)}"
+            logger.exception(f"停止 frpc 服务失败: {str(e)}")
+            self._append_log(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [错误] 停止失败，请查看应用日志获取详情\n")
+            return False, "停止失败，请稍后重试"
 
     def restart(self):
         """重启 frpc 服务"""
@@ -232,6 +486,7 @@ class FrpcManager:
 
     def get_status(self):
         """获取 frpc 服务状态"""
+        version_summary = self.get_version_summary()
         try:
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
@@ -239,21 +494,24 @@ class FrpcManager:
                         return {
                             'status': 'running',
                             'pid': proc.info['pid'],
-                            'error_message': self.error_message if self.error_state else ''
+                            'error_message': self.error_message if self.error_state else '',
+                            **version_summary,
                         }
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
             return {
                 'status': 'stopped',
                 'pid': None,
-                'error_message': self.error_message if self.error_state else ''
+                'error_message': self.error_message if self.error_state else '',
+                **version_summary,
             }
         except Exception as e:
             logger.error(f"获取状态失败: {str(e)}")
             return {
                 'status': 'error',
                 'pid': None,
-                'error_message': str(e)
+                'error_message': '状态读取失败，请稍后重试',
+                **version_summary,
             }
 
     def get_logs(self, lines=100):

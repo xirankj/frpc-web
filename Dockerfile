@@ -18,20 +18,21 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 # 复制项目文件
 COPY requirements.txt .
 COPY app/ ./app/
+COPY migrations/ ./migrations/
 COPY run.py .
 
 # 安装 Python 依赖
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 创建日志目录
-RUN mkdir -p /var/log/frpc-web
+# 创建日志与持久化目录
+RUN mkdir -p /var/log/frpc-web /app/data/frpc
 
 # 设置环境变量
 ENV FLASK_APP=run.py
 ENV FLASK_ENV=production
 ENV PYTHONUNBUFFERED=1
 
-# 暴露端口（与 WEB_PORT 保持一致）
+# 暴露默认端口元数据，实际监听端口以 WEB_PORT 为准
 EXPOSE 8001
 
 # 启动命令

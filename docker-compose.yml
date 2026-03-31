@@ -1,19 +1,17 @@
-version: '3.8'
-
 services:
   frpc-web:
     build: .
     container_name: frpc-web
     restart: unless-stopped
     ports:
-      - "${WEB_PORT:-8001}:8001"
+      - "${WEB_PORT:-8001}:${WEB_PORT:-8001}"
     volumes:
       - ./data:/app/data
       - ./logs:/var/log/frpc-web
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:${WEB_PORT:-8001}/health"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -9,6 +9,7 @@ from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from app.utils.frpc_manager import FrpcManager
 import threading
+from app.runtime_settings import load_runtime_settings, resolve_runtime_path, sync_legacy_runtime_files
 
 # 加载环境变量
 load_dotenv()
@@ -17,20 +18,45 @@ db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
 
+
+def normalize_database_uri(db_uri: str, runtime_settings) -> str:
+    """统一解析数据库连接，兼容容器路径和本地路径。"""
+    if not db_uri.startswith('sqlite:///'):
+        return db_uri
+
+    raw_path = db_uri.replace('sqlite:///', '', 1)
+    resolved_path = resolve_runtime_path(
+        raw_path,
+        runtime_settings.base_dir,
+        data_dir=runtime_settings.data_dir,
+        logs_dir=runtime_settings.logs_dir
+    )
+    return f'sqlite:///{resolved_path}'
+
 def create_app():
     from app.models import User  # 移到这里，避免循环导入
     
     app = Flask(__name__)
+    runtime_settings = load_runtime_settings()
     
     # 配置
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-    # 统一并规范化数据库路径：优先用环境变量，默认 /app/data/frpc.db
-    db_uri = os.getenv('DATABASE_URL', 'sqlite:///data/frpc.db')
-    # 若是相对路径的 sqlite（sqlite:///相对路径），转为绝对路径，避免工作目录差异导致打不开文件
-    if db_uri.startswith('sqlite:///') and not db_uri.startswith('sqlite:////'):
-        rel_path = db_uri.replace('sqlite:///', '', 1)
-        abs_path = os.path.abspath(os.path.join(os.getcwd(), rel_path))
-        db_uri = f'sqlite:///{abs_path}'
+    secret_key = os.getenv('SECRET_KEY')
+    if not secret_key or secret_key.strip() in ('', 'your-secret-key-here', 'replace-with-a-random-secret'):
+        raise RuntimeError('SECRET_KEY 未配置或仍为默认值，请在 .env 中设置安全的随机密钥')
+    app.config['SECRET_KEY'] = secret_key
+    app.config['APP_BASE_DIR'] = runtime_settings.base_dir
+    app.config['APP_DATA_DIR'] = runtime_settings.data_dir
+    app.config['FRPC_WORK_DIR'] = runtime_settings.frpc_work_dir
+    app.config['FRPC_BINARY_PATH'] = runtime_settings.frpc_binary_path
+    app.config['FRPC_CONFIG_PATH'] = runtime_settings.frpc_config_path
+    app.config['WEB_CONFIG_PATH'] = runtime_settings.web_config_path
+    app.config['APP_PORT'] = runtime_settings.app_port
+    app.config['LOGS_DIR'] = runtime_settings.logs_dir
+
+    # 统一并规范化数据库路径：优先用环境变量，默认写入持久化 data 目录
+    default_db_path = os.path.join(runtime_settings.data_dir, 'frpc.db')
+    db_uri = os.getenv('DATABASE_URL', f'sqlite:///{default_db_path}')
+    db_uri = normalize_database_uri(db_uri, runtime_settings)
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)  # 设置 session 有效期为1小时
@@ -51,11 +77,12 @@ def create_app():
     # 添加错误处理
     @app.errorhandler(404)
     def not_found_error(error):
-        return jsonify({'error': 'Not found', 'message': str(error)}), 404
+        return jsonify({'error': 'Not found', 'message': '请求的资源不存在'}), 404
 
     @app.errorhandler(500)
     def internal_error(error):
-        return jsonify({'error': 'Internal server error', 'message': str(error)}), 500
+        app.logger.exception(f'应用内部错误: {str(error)}')
+        return jsonify({'error': 'Internal server error', 'message': '服务器内部错误，请稍后重试'}), 500
 
     @app.errorhandler(401)
     def unauthorized_error(error):
@@ -66,7 +93,12 @@ def create_app():
         # 获取日志配置
         log_level = os.getenv('LOG_LEVEL', 'INFO')
         log_format = os.getenv('LOG_FORMAT', '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        log_file = os.getenv('LOG_FILE', '/var/log/frpc-web/app.log')
+        log_file = resolve_runtime_path(
+            os.getenv('LOG_FILE', os.path.join(runtime_settings.logs_dir, 'app.log')),
+            runtime_settings.base_dir,
+            data_dir=runtime_settings.data_dir,
+            logs_dir=runtime_settings.logs_dir
+        )
         
         # 设置日志级别
         numeric_level = getattr(logging, log_level.upper(), None)
@@ -76,6 +108,10 @@ def create_app():
         # 配置根日志记录器
         root_logger = logging.getLogger()
         root_logger.setLevel(numeric_level)
+        if root_logger.handlers:
+            for handler in list(root_logger.handlers):
+                root_logger.removeHandler(handler)
+                handler.close()
         
         # 创建格式化器
         formatter = logging.Formatter(log_format)
@@ -138,7 +174,7 @@ def create_app():
     # 添加会话验证
     @login_manager.user_loader
     def load_user(user_id):
-        user = User.query.get(int(user_id))
+        user = db.session.get(User, int(user_id))
         if user:
             # 如果 last_login 或 password_changed_at 为空，允许通过
             if user.password_changed_at and user.last_login:
@@ -158,9 +194,9 @@ def create_app():
     # 创建必要的目录
     def create_directories():
         directories = [
-            'data',
-            'data/frpc',
-            'logs'
+            runtime_settings.data_dir,
+            runtime_settings.frpc_work_dir,
+            runtime_settings.logs_dir
         ]
         for directory in directories:
             if not os.path.exists(directory):
@@ -168,12 +204,15 @@ def create_app():
                 logger.info(f'创建目录: {directory}')
 
     create_directories()
+    synced_files = sync_legacy_runtime_files(runtime_settings)
+    for source_path, target_path in synced_files:
+        logger.info(f'已将旧版运行文件同步到持久化目录: {source_path} -> {target_path}')
 
     # 检查并自动启动 frpc
     def auto_start_frpc():
         try:
-            frpc_path = os.path.join(os.getcwd(), 'frpc')
-            config_path = os.path.join(os.getcwd(), 'frpc.json')
+            frpc_path = runtime_settings.frpc_binary_path
+            config_path = runtime_settings.frpc_config_path
             
             # 检查文件是否存在
             if os.path.exists(frpc_path) and os.path.exists(config_path):

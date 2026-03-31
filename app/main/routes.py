@@ -1,4 +1,4 @@
-from flask import render_template, jsonify, request, Response
+from flask import render_template, jsonify, request
 from flask_login import login_required, current_user
 from app.main import bp
 import json
@@ -12,62 +12,112 @@ import time
 import logging
 from flask_sock import Sock
 from app.utils.frpc_manager import FrpcManager
-import queue
+from app.runtime_settings import load_runtime_settings
+from app.services.runtime_state import runtime_state, DownloadCancelledError
+from app.utils.input_validator import InputValidator
 
-# 配置日志
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # 创建 WebSocket 实例
 sock = Sock()
 
-# 全局变量存储下载状态
-download_status = {
-    'is_downloading': False,
-    'progress': '',
-    'completed': False,
-    'error': False,  # 添加错误状态标识
-    'error_message': ''  # 添加错误消息
-}
-
-# WebSocket 连接列表
-ws_clients = set()
-
-# 创建日志队列
-log_queue = queue.Queue()
-
 frpc_manager = FrpcManager()
+runtime_state.ensure_log_broadcaster_started()
 
-download_thread = None
 
-def broadcast_logs():
-    """广播日志到所有 WebSocket 客户端"""
-    while True:
-        try:
-            log_message = log_queue.get()
-            message = json.dumps({
-                'type': 'log',
-                'content': log_message
+def get_runtime_settings():
+    """统一读取运行时路径配置。"""
+    return load_runtime_settings()
+
+
+def json_error(message: str, status_code: int = 500):
+    """统一返回前端可读的错误响应。"""
+    return jsonify({'status': 'error', 'message': message}), status_code
+
+
+def normalize_proxies_list(config: dict, with_enabled: bool | None = None):
+    """统一校验并规范化 proxies 字段。"""
+    proxies = config.get('proxies')
+    if proxies is None:
+        return None, []
+    if not isinstance(proxies, list):
+        return None, ['proxies 必须是数组']
+
+    normalized = []
+    for proxy in proxies:
+        if not isinstance(proxy, dict):
+            return None, ['proxies 中的每一项都必须是对象']
+        if with_enabled is True:
+            normalized.append({
+                **proxy,
+                'enabled': proxy.get('enabled', True)
             })
-            for client in ws_clients.copy():
-                try:
-                    client.send(message)
-                except Exception as e:
-                    logger.error(f'发送日志消息失败: {str(e)}')
-                    ws_clients.remove(client)
-        except Exception as e:
-            logger.error(f'广播日志时出错: {str(e)}')
-        time.sleep(0.1)  # 避免过度消耗 CPU
+        elif with_enabled is False:
+            normalized.append({
+                key: value for key, value in proxy.items() if key != 'enabled'
+            })
+        else:
+            normalized.append(dict(proxy))
+    return normalized, []
 
-# 启动日志广播线程
-log_broadcast_thread = threading.Thread(target=broadcast_logs, daemon=True)
-log_broadcast_thread.start()
+
+def log_internal_error(log_message: str, exc: Exception, user_message: str, status_code: int = 500):
+    """记录详细错误，但对前端只返回通用消息。"""
+    logger.exception(f'{log_message}: {str(exc)}')
+    return json_error(user_message, status_code)
+
+
+def get_download_snapshot():
+    """读取当前下载状态快照。"""
+    return runtime_state.download_manager.snapshot()
+
+
+def cleanup_download_artifacts(*paths):
+    """清理下载过程中产生的临时文件和目录。"""
+    for path in paths:
+        if not path:
+            continue
+        try:
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            elif os.path.exists(path):
+                os.remove(path)
+        except Exception as e:
+            logger.warning(f'清理下载临时文件失败: {path}, 错误: {str(e)}')
+
+
+def request_download_cancel():
+    """向当前下载任务发送取消信号。"""
+    success, message = runtime_state.download_manager.request_cancel()
+    if success:
+        broadcast_download_status()
+    return success, message
+
+
+def reject_unauthorized_websocket(ws, user) -> bool:
+    """拒绝未登录的 WebSocket 连接。"""
+    if user.is_authenticated:
+        return False
+
+    logger.warning('未登录用户尝试建立 WebSocket 连接，已拒绝')
+    try:
+        ws.send(json.dumps({
+            'type': 'error',
+            'message': '请先登录'
+        }))
+        ws.close()
+    except Exception:
+        pass
+    return True
 
 @sock.route('/ws')
 def ws_handler(ws):
     """处理 WebSocket 连接"""
+    if reject_unauthorized_websocket(ws, current_user):
+        return
+
     logger.info('新的 WebSocket 连接')
-    ws_clients.add(ws)
+    runtime_state.websocket_hub.add(ws)
     status_thread = None
     status_thread_stop = threading.Event()
     def push_status():
@@ -78,7 +128,11 @@ def ws_handler(ws):
                     'type': 'service_status',
                     'status': status['status'],
                     'pid': status.get('pid'),
-                    'error_message': status.get('error_message', '')
+                    'error_message': status.get('error_message', ''),
+                    'frpc_version': status.get('frpc_version', '待检测'),
+                    'frpc_version_hint': status.get('frpc_version_hint', ''),
+                    'frps_version': status.get('frps_version', '待检测'),
+                    'frps_version_hint': status.get('frps_version_hint', '')
                 }))
                 time.sleep(2)
         except Exception as e:
@@ -92,12 +146,14 @@ def ws_handler(ws):
                     data = json.loads(message)
                     if data.get('type') == 'start_download_progress':
                         logger.info('开始订阅下载进度')
+                        download_snapshot = get_download_snapshot()
                         ws.send(json.dumps({
                             'type': 'download_progress',
-                            'message': download_status['progress'],
-                            'completed': download_status['completed'],
-                            'error': download_status['error'],
-                            'error_message': download_status['error_message']
+                            'message': download_snapshot['progress'],
+                            'completed': download_snapshot['completed'],
+                            'error': download_snapshot['error'],
+                            'cancelled': download_snapshot['cancelled'],
+                            'error_message': download_snapshot['error_message']
                         }))
                     elif data.get('type') == 'get_log':
                         # 直接读取最新日志并推送
@@ -125,25 +181,20 @@ def ws_handler(ws):
         logger.error(f'WebSocket 连接出错: {str(e)}')
     finally:
         logger.info('WebSocket 连接关闭')
-        ws_clients.remove(ws)
+        runtime_state.websocket_hub.discard(ws)
         status_thread_stop.set()
 
 def broadcast_download_status():
     """广播下载状态到所有 WebSocket 客户端"""
-    message = json.dumps({
+    download_snapshot = get_download_snapshot()
+    runtime_state.websocket_hub.broadcast({
         'type': 'download_progress',
-        'message': download_status['progress'],
-        'completed': download_status['completed'],
-        'error': download_status['error'],
-        'error_message': download_status['error_message']
+        'message': download_snapshot['progress'],
+        'completed': download_snapshot['completed'],
+        'error': download_snapshot['error'],
+        'cancelled': download_snapshot['cancelled'],
+        'error_message': download_snapshot['error_message']
     })
-    logger.debug(f'广播下载状态: {message}')
-    for client in ws_clients.copy():
-        try:
-            client.send(message)
-        except Exception as e:
-            logger.error(f'发送 WebSocket 消息失败: {str(e)}')
-            ws_clients.remove(client)
 
 @bp.route('/')
 @bp.route('/index')
@@ -161,16 +212,33 @@ def health():
 def save_frpc_config():
     logger.info('收到保存 frpc.json 请求')
     try:
-        config = request.get_json()
+        runtime_settings = get_runtime_settings()
+        config = request.get_json(silent=True) or {}
         logger.debug(f'保存的配置内容: {config}')
+
+        if not isinstance(config, dict):
+            return json_error('配置内容必须是 JSON 对象', 400)
         
-        # 过滤掉 enabled 字段
-        if 'proxies' in config:
-            config['proxies'] = [{
-                key: value for key, value in proxy.items() if key != 'enabled'
-            } for proxy in config['proxies']]
+        normalized_proxies, proxy_errors = normalize_proxies_list(config, with_enabled=False)
+        if proxy_errors:
+            return jsonify({
+                'status': 'error',
+                'message': '；'.join(proxy_errors),
+                'errors': proxy_errors
+            }), 400
+        if normalized_proxies is not None:
+            config['proxies'] = normalized_proxies
+
+        validation_errors = InputValidator.validate_frpc_config(config)
+        if validation_errors:
+            return jsonify({
+                'status': 'error',
+                'message': '；'.join(validation_errors),
+                'errors': validation_errors
+            }), 400
         
-        with open('frpc.json', 'w', encoding='utf-8') as f:
+        os.makedirs(runtime_settings.frpc_work_dir, exist_ok=True)
+        with open(runtime_settings.frpc_config_path, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
         logger.info('frpc.json 保存成功')
         return jsonify({
@@ -178,43 +246,45 @@ def save_frpc_config():
             'message': 'frpc.json 已保存'
         })
     except Exception as e:
-        logger.error(f'保存 frpc.json 失败: {str(e)}')
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        return log_internal_error('保存 frpc.json 失败', e, '保存 frpc.json 失败，请稍后重试')
 
 @bp.route('/frpc.json')
 @login_required
 def get_config():
     try:
-        with open('frpc.json', 'r', encoding='utf-8') as f:
+        runtime_settings = get_runtime_settings()
+        with open(runtime_settings.frpc_config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         return jsonify(config)
     except Exception as e:
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return log_internal_error('读取 frpc.json 失败', e, '读取 frpc.json 失败，请稍后重试')
 
 @bp.route('/config.json')
 @login_required
 def get_config_file():
     try:
-        if os.path.exists('config.json'):
-            with open('config.json', 'r', encoding='utf-8') as f:
+        runtime_settings = get_runtime_settings()
+        if os.path.exists(runtime_settings.web_config_path):
+            with open(runtime_settings.web_config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             return jsonify(config)
         else:
             # 如果 config.json 不存在，尝试从 frpc.json 读取并添加 enabled 字段
-            if os.path.exists('frpc.json'):
-                with open('frpc.json', 'r', encoding='utf-8') as f:
+            if os.path.exists(runtime_settings.frpc_config_path):
+                with open(runtime_settings.frpc_config_path, 'r', encoding='utf-8') as f:
                     config = json.load(f)
-                # 为所有客户端配置添加 enabled 字段
-                if 'proxies' in config:
-                    config['proxies'] = [{
-                        **proxy,
-                        'enabled': True  # 从 frpc.json 读取的配置默认都是启用的
-                    } for proxy in config['proxies']]
+                normalized_proxies, proxy_errors = normalize_proxies_list(config, with_enabled=True)
+                if proxy_errors:
+                    return jsonify({
+                        'status': 'error',
+                        'message': '；'.join(proxy_errors),
+                        'errors': proxy_errors
+                    }), 400
+                if normalized_proxies is not None:
+                    config['proxies'] = normalized_proxies
                 # 保存为 config.json
-                with open('config.json', 'w', encoding='utf-8') as f:
+                os.makedirs(runtime_settings.frpc_work_dir, exist_ok=True)
+                with open(runtime_settings.web_config_path, 'w', encoding='utf-8') as f:
                     json.dump(config, f, indent=2, ensure_ascii=False)
                 return jsonify(config)
             return jsonify({
@@ -222,54 +292,62 @@ def get_config_file():
                 'message': '配置文件不存在'
             }), 404
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        return log_internal_error('读取 config.json 失败', e, '读取配置文件失败，请稍后重试')
 
 @bp.route('/save-config', methods=['POST'])
 @login_required
 def save_config_file():
     try:
-        config = request.get_json()
-        # 确保所有客户端配置都有 enabled 字段
-        if 'proxies' in config:
-            config['proxies'] = [{
-                **proxy,
-                'enabled': proxy.get('enabled', True)  # 如果没有 enabled 字段，默认为 True
-            } for proxy in config['proxies']]
+        runtime_settings = get_runtime_settings()
+        config = request.get_json(silent=True) or {}
+        if not isinstance(config, dict):
+            return json_error('配置内容必须是 JSON 对象', 400)
+
+        normalized_proxies, proxy_errors = normalize_proxies_list(config, with_enabled=True)
+        if proxy_errors:
+            return jsonify({
+                'status': 'error',
+                'message': '；'.join(proxy_errors),
+                'errors': proxy_errors
+            }), 400
+        if normalized_proxies is not None:
+            config['proxies'] = normalized_proxies
+
+        validation_errors = InputValidator.validate_frpc_config(config)
+        if validation_errors:
+            return jsonify({
+                'status': 'error',
+                'message': '；'.join(validation_errors),
+                'errors': validation_errors
+            }), 400
         
-        with open('config.json', 'w', encoding='utf-8') as f:
+        os.makedirs(runtime_settings.frpc_work_dir, exist_ok=True)
+        with open(runtime_settings.web_config_path, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
         return jsonify({
             'status': 'success',
             'message': '配置已保存'
         })
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        return log_internal_error('保存 config.json 失败', e, '保存配置失败，请稍后重试')
 
 @bp.route('/check-frpc')
 @login_required
 def check_frpc():
     try:
-        frpc_path = Path('frpc')
+        runtime_settings = get_runtime_settings()
+        frpc_path = Path(runtime_settings.frpc_binary_path)
         exists = frpc_path.exists() and frpc_path.is_file()
         return jsonify({
             'status': 'success',
             'exists': exists
         })
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        return log_internal_error('检查 frpc 文件失败', e, '检查 frpc 文件失败，请稍后重试')
 
 def download_and_extract():
     """
-    下载 frp 最新版本的 linux_amd64 发行包，并解压出 frpc 可执行文件到项目根目录。
+    下载 frp 最新版本的 linux_amd64 发行包，并解压出 frpc 可执行文件到持久化目录。
     解压与存放路径、权限处理保持与旧逻辑一致。
     优先使用 GitHub Releases API 获取最新版本；若失败，回退到解析 releases/latest 页面。
     同时通过 WebSocket 广播简单下载进度信息。
@@ -281,20 +359,31 @@ def download_and_extract():
     import re
     from urllib.parse import urlparse
 
-    global download_status
+    runtime_settings = get_runtime_settings()
+    work_dir = runtime_settings.frpc_work_dir
+    binary_path = runtime_settings.frpc_binary_path
+    download_manager = runtime_state.download_manager
+    extracted_dir_path = None
 
-    def set_progress(message: str, completed: bool = False, error: bool = False, percent: float | None = None):
+    os.makedirs(work_dir, exist_ok=True)
+
+    def set_progress(message: str, completed: bool = False, error: bool = False, cancelled: bool = False):
         """更新全局下载状态并广播"""
         try:
-            download_status['is_downloading'] = not completed and not error
-            download_status['progress'] = message
-            download_status['completed'] = completed
-            download_status['error'] = error
-            download_status['error_message'] = message if error else ''
+            download_manager.update_progress(
+                message=message,
+                completed=completed,
+                error=error,
+                cancelled=cancelled
+            )
             broadcast_download_status()
         except Exception:
             # 广播异常不应影响主流程
             pass
+
+    def ensure_not_cancelled():
+        """在关键步骤检查是否已收到取消信号。"""
+        download_manager.ensure_not_cancelled()
 
     def get_latest_linux_amd64_from_api():
         api = 'https://api.github.com/repos/fatedier/frp/releases/latest'
@@ -333,48 +422,54 @@ def download_and_extract():
         url = f'https://github.com/fatedier/frp/releases/download/{tag}/{name}'
         return url, name, tag
 
-    # 1) 获取最新下载链接
     try:
-        url, filename, tag = get_latest_linux_amd64_from_api()
-    except Exception:
-        # API 失败时使用 HTML 解析回退
-        url, filename, tag = get_latest_linux_amd64_from_html()
+        try:
+            url, filename, tag = get_latest_linux_amd64_from_api()
+        except Exception:
+            # API 失败时使用 HTML 解析回退
+            url, filename, tag = get_latest_linux_amd64_from_html()
 
-    try:
         set_progress(f'开始下载最新版本 {tag} ...')
+        archive_path = os.path.join(work_dir, filename)
+        extracted_dir_name = filename[:-7] if filename.endswith('.tar.gz') else filename
+        extracted_dir_path = os.path.join(work_dir, extracted_dir_name)
+        if os.path.isdir(extracted_dir_path):
+            shutil.rmtree(extracted_dir_path)
+        download_manager.set_archive_path(archive_path)
+        ensure_not_cancelled()
         # 2) 下载文件
         with requests.get(url, stream=True, timeout=60, headers={'User-Agent': 'frpc-manager'}) as response:
             response.raise_for_status()
             total = response.headers.get('Content-Length')
             total = int(total) if total else None
             downloaded = 0
-            with open(filename, 'wb') as file:
+            with open(archive_path, 'wb') as file:
                 for chunk in response.iter_content(chunk_size=1024 * 256):
+                    ensure_not_cancelled()
                     if chunk:
                         file.write(chunk)
                         downloaded += len(chunk)
                         if total:
                             percent = downloaded * 100.0 / total
                             set_progress(f'下载进度: {percent:.1f}%')
+        ensure_not_cancelled()
         set_progress('下载完成，开始解压...')
         # 3) 解压（安全校验，防路径穿越）
-        with tarfile.open(filename, 'r:gz') as tar:
+        with tarfile.open(archive_path, 'r:gz') as tar:
             def is_within_directory(directory: str, target: str) -> bool:
                 abs_directory = os.path.abspath(directory)
                 abs_target = os.path.abspath(target)
                 return (abs_target + os.sep).startswith(abs_directory + os.sep)
             for member in tar.getmembers():
-                member_path = os.path.join('.', member.name)
-                if not is_within_directory('.', member_path):
+                ensure_not_cancelled()
+                member_path = os.path.join(work_dir, member.name)
+                if not is_within_directory(work_dir, member_path):
                     set_progress('检测到压缩包包含非法路径，已终止', completed=True, error=True)
                     return False, '压缩包包含非法路径'
-            tar.extractall(path='.')
+                tar.extract(member, path=work_dir)
         # 4) 查找解压目录
-        extracted_dir = None
-        for item in os.listdir('.'):
-            if item.startswith('frp_') and os.path.isdir(item):
-                extracted_dir = item
-                break
+        ensure_not_cancelled()
+        extracted_dir = extracted_dir_path if os.path.isdir(extracted_dir_path) else None
         if not extracted_dir:
             set_progress('未找到解压目录', completed=True, error=True)
             return False, '未找到解压目录'
@@ -382,124 +477,96 @@ def download_and_extract():
         if not os.path.exists(frpc_path):
             set_progress('未找到 frpc 文件', completed=True, error=True)
             return False, '未找到 frpc 文件'
-        # 5) 移动 frpc 到根目录（覆盖旧文件）
-        if os.path.exists('frpc'):
+        # 5) 移动 frpc 到持久化目录（覆盖旧文件）
+        ensure_not_cancelled()
+        if os.path.exists(binary_path):
             try:
-                os.remove('frpc')
+                os.remove(binary_path)
             except Exception:
                 # 可能被占用，尝试重命名备份
                 try:
-                    os.rename('frpc', f'frpc.bak')
+                    os.rename(binary_path, f'{binary_path}.bak')
                 except Exception:
                     pass
-        shutil.move(frpc_path, 'frpc')
+        shutil.move(frpc_path, binary_path)
         # 6) 清理解压目录和压缩包
         try:
             shutil.rmtree(extracted_dir)
         finally:
-            if os.path.exists(filename):
-                os.remove(filename)
+            if os.path.exists(archive_path):
+                os.remove(archive_path)
+            download_manager.clear_archive_path()
         # 7) 设置可执行权限（非Windows）
         if os.name != 'nt':
-            os.chmod('frpc', 0o755)
+            os.chmod(binary_path, 0o755)
         set_progress(f'已下载最新版本 {tag} 并解压完成。', completed=True)
-        return True, f'已下载最新版本 {tag}，并解压完成。frpc 已放到根目录。'
+        return True, f'已下载最新版本 {tag}，并解压完成。frpc 已保存到持久化目录。'
+    except DownloadCancelledError as e:
+        cleanup_download_artifacts(download_manager.get_archive_path(), extracted_dir_path)
+        download_manager.clear_archive_path()
+        set_progress(str(e), completed=True, cancelled=True)
+        return False, str(e)
     except Exception as e:
-        set_progress(f'下载或解压失败: {e}', completed=True, error=True)
-        return False, f'下载或解压失败: {e}'
+        cleanup_download_artifacts(download_manager.get_archive_path(), extracted_dir_path)
+        logger.exception(f'下载或解压失败: {str(e)}')
+        set_progress('下载或解压失败，请检查网络连接或稍后重试', completed=True, error=True)
+        download_manager.clear_archive_path()
+        return False, '下载或解压失败，请检查网络连接或稍后重试'
 
 @bp.route('/download-frpc', methods=['POST'])
 @login_required
 def download_frpc():
-    global download_thread
-    global download_status
     try:
-        # 如果已经在下载，返回错误
-        if getattr(download_frpc, '_is_downloading', False):
-            return jsonify({
-                'status': 'error',
-                'message': '已有下载任务正在进行'
-            }), 400
-        setattr(download_frpc, '_is_downloading', True)
-        # 重置下载状态
-        download_status['is_downloading'] = True
-        download_status['progress'] = '开始下载任务...'
-        download_status['completed'] = False
-        download_status['error'] = False
-        download_status['error_message'] = ''
+        download_manager = runtime_state.download_manager
+        if not download_manager.can_start():
+            return json_error('已有下载任务正在进行', 400)
+
         def run_download():
             try:
                 download_and_extract()
             finally:
-                setattr(download_frpc, '_is_downloading', False)
-        download_thread = threading.Thread(target=run_download, daemon=True)
-        download_thread.start()
+                download_manager.finish_thread()
+
+        download_manager.start(run_download)
         return jsonify({'status': 'accepted', 'message': '下载任务已开始'}), 202
     except Exception as e:
-        setattr(download_frpc, '_is_downloading', False)
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        return log_internal_error('启动下载任务失败', e, '启动下载任务失败，请稍后重试')
 
 @bp.route('/stop-download', methods=['POST'])
 @login_required
 def stop_download():
-    global download_thread
-    if getattr(download_frpc, '_is_downloading', False):
-        # Python线程无法强制终止，只能通过状态标志配合下载函数实现中断。
-        # 这里简单地将状态标志设为False，实际下载线程会继续运行直到结束。
-        setattr(download_frpc, '_is_downloading', False)
-        return jsonify({'status': 'success', 'message': '已请求停止下载任务（注意：实际线程会继续运行到结束）'})
-    else:
-        return jsonify({'status': 'error', 'message': '没有正在进行的下载任务'}), 400
+    success, message = request_download_cancel()
+    if success:
+        return jsonify({'status': 'success', 'message': message})
+    return json_error(message, 400)
 
 @bp.route('/cancel-download', methods=['POST'])
 @login_required
 def cancel_download():
-    global download_status
     logger.info('收到取消下载请求')
-    if download_status['is_downloading']:
-        # 设置取消状态
-        download_status['is_downloading'] = False
-        download_status['progress'] = '下载已取消'
-        download_status['completed'] = True
-        download_status['error'] = True
-        download_status['error_message'] = '用户取消了下载'
-        
-        # 广播取消状态
-        broadcast_download_status()
-        
-        # 清理可能存在的临时文件
-        try:
-            if os.path.exists('frp.tar.gz'):
-                os.remove('frp.tar.gz')
-                logger.info('已删除临时下载文件')
-        except Exception as e:
-            logger.error(f'清理临时文件失败: {str(e)}')
-        
+    success, message = request_download_cancel()
+    if success:
         return jsonify({
             'status': 'success',
-            'message': '下载已取消'
+            'message': message
         })
-    return jsonify({
-        'status': 'error',
-        'message': '没有正在进行的下载任务'
-    }), 400
+    return json_error(message, 400)
 
 @bp.route('/download-progress')
 @login_required
 def download_progress():
     try:
+        download_snapshot = get_download_snapshot()
         return jsonify({
             'status': 'success',
-            'message': download_status['progress'],
-            'completed': download_status['completed'],
-            'error': download_status['error'],
-            'error_message': download_status['error_message']
+            'message': download_snapshot['progress'],
+            'completed': download_snapshot['completed'],
+            'error': download_snapshot['error'],
+            'cancelled': download_snapshot['cancelled'],
+            'error_message': download_snapshot['error_message']
         })
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        return log_internal_error('读取下载进度失败', e, '读取下载进度失败，请稍后重试')
 
 @bp.route('/frpc/status')
 @login_required
@@ -509,8 +576,7 @@ def frpc_status():
         status = frpc_manager.get_status()
         return jsonify(status)
     except Exception as e:
-        logger.error(f"获取状态失败: {str(e)}")
-        return jsonify({'error': '获取状态失败', 'message': str(e)}), 500
+        return log_internal_error('获取 frpc 状态失败', e, '获取 frpc 状态失败，请稍后重试')
 
 @bp.route('/frpc/start', methods=['POST'])
 @login_required
@@ -523,8 +589,7 @@ def frpc_start():
             'message': message
         })
     except Exception as e:
-        logger.error(f"启动服务失败: {str(e)}")
-        return jsonify({'error': '启动服务失败', 'message': str(e)}), 500
+        return log_internal_error('启动 frpc 服务失败', e, '启动服务失败，请稍后重试')
 
 @bp.route('/frpc/stop', methods=['POST'])
 @login_required
@@ -537,8 +602,7 @@ def frpc_stop():
             'message': message
         })
     except Exception as e:
-        logger.error(f"停止服务失败: {str(e)}")
-        return jsonify({'error': '停止服务失败', 'message': str(e)}), 500
+        return log_internal_error('停止 frpc 服务失败', e, '停止服务失败，请稍后重试')
 
 @bp.route('/frpc/restart', methods=['POST'])
 @login_required
@@ -551,8 +615,7 @@ def frpc_restart():
             'message': message
         })
     except Exception as e:
-        logger.error(f"重启服务失败: {str(e)}")
-        return jsonify({'error': '重启服务失败', 'message': str(e)}), 500
+        return log_internal_error('重启 frpc 服务失败', e, '重启服务失败，请稍后重试')
 
 @bp.route('/frpc/logs')
 @login_required
@@ -561,25 +624,21 @@ def frpc_logs():
     try:
         logs = frpc_manager.get_logs()
         # 将日志放入队列以广播给所有客户端
-        for log in logs:
-            log_queue.put(log)
+        runtime_state.enqueue_logs(logs)
         return jsonify({'logs': logs})
     except Exception as e:
-        logger.error(f'获取日志失败: {str(e)}')
-        return jsonify({'error': '获取日志失败', 'message': str(e)}), 500
+        return log_internal_error('获取 frpc 日志失败', e, '获取日志失败，请稍后重试')
 
 @bp.route('/delete-frpc-config', methods=['POST'])
 @login_required
 def delete_frpc_config():
     try:
-        if os.path.exists('frpc.json'):
-            os.remove('frpc.json')
+        runtime_settings = get_runtime_settings()
+        if os.path.exists(runtime_settings.frpc_config_path):
+            os.remove(runtime_settings.frpc_config_path)
         return jsonify({
             'status': 'success',
             'message': 'frpc.json 已删除'
         })
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500 
+        return log_internal_error('删除 frpc.json 失败', e, '删除 frpc.json 失败，请稍后重试')

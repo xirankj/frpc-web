@@ -1,14 +1,16 @@
-"""
-输入验证工具
-"""
-import json
+"""输入验证工具。"""
+import ipaddress
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from flask import request
 
 
 class InputValidator:
     """输入验证器"""
+
+    HOSTNAME_PATTERN = re.compile(
+        r'^(?=.{1,253}$)(?!-)(?:[A-Za-z0-9-]{1,63}(?<!-)\.)*[A-Za-z0-9-]{1,63}(?<!-)$'
+    )
     
     @staticmethod
     def validate_json_request(required_fields: List[str], optional_fields: List[str] = None) -> Dict[str, Any]:
@@ -86,9 +88,29 @@ class InputValidator:
         if not ip or not isinstance(ip, str):
             return False
         
-        # IPv4 地址验证
-        pattern = r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$'
-        return bool(re.match(pattern, ip))
+        try:
+            ipaddress.ip_address(ip)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def validate_hostname(hostname: str) -> bool:
+        """验证主机名或域名格式。"""
+        if not hostname or not isinstance(hostname, str):
+            return False
+
+        candidate = hostname.strip()
+        if candidate.lower() == 'localhost':
+            return True
+        if candidate.startswith('.') or candidate.endswith('.'):
+            candidate = candidate.strip('.')
+        return bool(InputValidator.HOSTNAME_PATTERN.match(candidate))
+
+    @staticmethod
+    def validate_host_or_ip(value: str) -> bool:
+        """验证 IP、主机名或域名。"""
+        return InputValidator.validate_ip_address(value) or InputValidator.validate_hostname(value)
     
     @staticmethod
     def validate_port(port: Any) -> bool:
@@ -123,7 +145,7 @@ class InputValidator:
         # 验证服务器地址
         if 'serverAddr' not in config:
             errors.append("缺少服务器地址 (serverAddr)")
-        elif not InputValidator.validate_ip_address(config['serverAddr']):
+        elif not InputValidator.validate_host_or_ip(config['serverAddr']):
             errors.append("服务器地址格式无效")
         
         # 验证服务器端口
@@ -132,6 +154,17 @@ class InputValidator:
         elif not InputValidator.validate_port(config['serverPort']):
             errors.append("服务器端口无效 (1-65535)")
         
+        # 验证 Web 管理配置
+        if 'webServer' in config and config['webServer']:
+            web_server = config['webServer']
+            if not isinstance(web_server, dict):
+                errors.append("Web 服务配置必须是对象")
+            else:
+                if web_server.get('addr') and not InputValidator.validate_host_or_ip(web_server['addr']):
+                    errors.append("Web 服务地址格式无效")
+                if web_server.get('port') and not InputValidator.validate_port(web_server['port']):
+                    errors.append("Web 服务端口无效 (1-65535)")
+
         # 验证认证配置
         if 'auth' in config:
             auth = config['auth']
@@ -145,6 +178,10 @@ class InputValidator:
                 
                 if auth.get('method') == 'token' and not auth.get('token'):
                     errors.append("使用 token 认证时必须提供 token")
+                if auth.get('method') == 'oidc':
+                    issuer = (auth.get('oidc') or {}).get('issuer') if isinstance(auth.get('oidc'), dict) else None
+                    if not issuer:
+                        errors.append("使用 oidc 认证时必须提供 issuer")
         
         # 验证代理配置
         if 'proxies' in config and isinstance(config['proxies'], list):
@@ -154,7 +191,9 @@ class InputValidator:
                     continue
                 
                 # 验证必需字段
-                required_proxy_fields = ['name', 'type', 'localIP', 'localPort', 'remotePort']
+                required_proxy_fields = ['name', 'type', 'localIP', 'localPort']
+                if proxy.get('type') in ['tcp', 'udp']:
+                    required_proxy_fields.append('remotePort')
                 for field in required_proxy_fields:
                     if field not in proxy:
                         errors.append(f"代理配置 {i+1} 缺少字段: {field}")
@@ -168,9 +207,23 @@ class InputValidator:
                     if port_field in proxy and not InputValidator.validate_port(proxy[port_field]):
                         errors.append(f"代理配置 {i+1} {port_field} 无效")
                 
-                # 验证本地 IP
-                if 'localIP' in proxy and not InputValidator.validate_ip_address(proxy['localIP']):
-                    errors.append(f"代理配置 {i+1} 本地IP地址无效")
+                # 验证本地地址
+                if 'localIP' in proxy and not InputValidator.validate_host_or_ip(proxy['localIP']):
+                    errors.append(f"代理配置 {i+1} 本地地址无效")
+
+                # 验证自定义域名
+                custom_domains = proxy.get('customDomains', [])
+                if custom_domains:
+                    if not isinstance(custom_domains, list):
+                        errors.append(f"代理配置 {i+1} customDomains 必须是数组")
+                    else:
+                        for domain in custom_domains:
+                            if not InputValidator.validate_hostname(domain):
+                                errors.append(f"代理配置 {i+1} 自定义域名无效: {domain}")
+
+                # 验证路由
+                if proxy.get('route') is not None and not isinstance(proxy.get('route'), str):
+                    errors.append(f"代理配置 {i+1} route 必须是字符串")
         
         return errors
     

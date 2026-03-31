@@ -7,47 +7,23 @@
     <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/bootstrap-icons.css') }}" rel="stylesheet">
     <style>
-        /* iOS 26 液态玻璃风格 - Liquid Glass Design */
         :root {
-            --ios-blue: #007AFF;
-            --ios-blue-light: #5AC8FA;
-            --ios-green: #34C759;
-            --ios-red: #FF3B30;
-            --ios-orange: #FF9500;
-            --ios-purple: #AF52DE;
-            --ios-gray: #8E8E93;
-            --ios-gray-light: #C7C7CC;
-            
-            /* 液态玻璃效果 */
-            --glass-bg: rgba(255, 255, 255, 0.72);
-            --glass-bg-light: rgba(255, 255, 255, 0.85);
-            --glass-border: rgba(255, 255, 255, 0.5);
-            --glass-shadow: rgba(0, 0, 0, 0.08);
-            --glass-glow: rgba(255, 255, 255, 0.9);
-            
-            /* 文字颜色 */
-            --text-primary: #1C1C1E;
-            --text-secondary: #3C3C43;
-            --text-tertiary: #8E8E93;
-            --border-color: rgba(0, 0, 0, 0.06);
-            
-            /* 语义颜色 */
-            --success-color: #34C759;
-            --error-color: #FF3B30;
-            --warning-color: #FF9500;
-            --info-color: #007AFF;
-            
-            /* 圆角 */
-            --radius-sm: 12px;
-            --radius-md: 20px;
-            --radius-lg: 28px;
-            --radius-xl: 36px;
-            
-            /* 阴影 */
-            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
-            --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.1);
+            --primary-color: #4f46e5;
+            --primary-light: #6366f1;
+            --primary-dark: #3730a3;
+            --secondary-color: #f8fafc;
+            --text-color: #374151;
+            --text-light: #6b7280;
+            --text-muted: #9ca3af;
+            --border-color: #e5e7eb;
+            --error-color: #ef4444;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
 
         * {
@@ -55,207 +31,104 @@
         }
 
         body {
-            /* iOS 26 风格渐变背景 */
-            background: linear-gradient(145deg, #E8F5FF 0%, #F0E6FF 35%, #FFE8F0 65%, #FFF5E6 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             background-attachment: fixed;
             min-height: 100vh;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            color: var(--text-primary);
-            position: relative;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--text-color);
         }
-
-        /* 背景装饰光晕 */
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 20% 30%, rgba(0, 122, 255, 0.12) 0%, transparent 40%),
-                        radial-gradient(circle at 80% 70%, rgba(175, 82, 222, 0.1) 0%, transparent 40%),
-                        radial-gradient(circle at 60% 20%, rgba(255, 149, 0, 0.08) 0%, transparent 35%);
-            animation: floatBg 25s ease-in-out infinite;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        @keyframes floatBg {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            33% { transform: translate(1%, 1%) rotate(0.5deg); }
-            66% { transform: translate(-0.5%, 0.5%) rotate(-0.5deg); }
-        }
-        /* iOS 26 主容器样式 */
+        /* 主容器样式 */
         .main-container {
-            max-width: 1500px;
+            max-width: 1500px; /* 进一步增大最大宽度 */
             margin: 0 auto;
             padding: 20px;
-            min-height: calc(100vh - 40px);
-            position: relative;
-            z-index: 1;
+            min-height: calc(100vh - 40px); /* 预留页脚高度，避免出现额外滚动 */
+            background: var(--bg-color);
         }
-
-        /* iOS 26 液态玻璃头部 */
         .dashboard-header {
-            background: var(--glass-bg);
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border-radius: var(--radius-lg);
-            box-shadow: 
-                0 8px 32px var(--glass-shadow),
-                inset 0 1px 0 var(--glass-glow);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
             margin-bottom: 24px;
-            padding: 20px 28px;
+            padding: 20px 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border: 1px solid var(--glass-border);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .dashboard-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 50%;
-            background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%);
-            pointer-events: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .dashboard-title {
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 700;
-            color: var(--text-primary);
+            color: var(--text-color);
             margin: 0;
             display: flex;
             align-items: center;
-            gap: 14px;
-            position: relative;
-            z-index: 1;
-            letter-spacing: -0.3px;
+            gap: 12px;
         }
 
-        /* iOS 26 液态玻璃图标 */
         .title-icon {
-            width: 44px;
-            height: 44px;
-            background: linear-gradient(135deg, var(--ios-blue) 0%, var(--ios-blue-light) 100%);
-            border-radius: 14px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 22px;
-            box-shadow: 
-                0 8px 24px rgba(0, 122, 255, 0.3),
-                inset 0 1px 0 rgba(255,255,255,0.3);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .title-icon::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 50%;
-            background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%);
+            font-size: 20px;
         }
 
         .user-actions {
             display: flex;
             gap: 10px;
             align-items: center;
-            position: relative;
-            z-index: 1;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
-        /* iOS 26 主题切换按钮 */
-        .user-btn.btn-theme {
-            background: linear-gradient(135deg, var(--ios-orange) 0%, #FF9F0A 100%);
-            color: white;
-            box-shadow: 0 6px 16px rgba(255, 149, 0, 0.4);
-        }
-
-        body.dark-mode .user-btn.btn-theme {
-            background: linear-gradient(135deg, var(--ios-blue-light) 0%, #64D2FF 100%);
-            box-shadow: 0 6px 16px rgba(90, 200, 250, 0.4);
-        }
-
-        /* iOS 26 液态玻璃主卡片 */
         .main-card {
-            background: var(--glass-bg-light);
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border-radius: var(--radius-xl);
-            box-shadow: 
-                0 16px 48px var(--glass-shadow),
-                inset 0 1px 0 var(--glass-glow);
-            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: var(--shadow-xl);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             overflow: hidden;
             position: relative;
         }
-
-        .main-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 100px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 100%);
-            pointer-events: none;
-            z-index: 0;
-        }
-        /* iOS 26 液态玻璃选项卡 */
+        /* 选项卡样式 */
         .nav-tabs {
             border-bottom: none;
-            padding: 16px 24px;
-            background: transparent;
+            padding: 0 24px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
             margin: 0;
-            display: flex;
-            gap: 8px;
-            position: relative;
-            z-index: 1;
         }
 
         .nav-tabs .nav-link {
             border: none;
-            border-radius: var(--radius-md);
-            color: var(--text-tertiary);
-            font-weight: 600;
-            padding: 14px 24px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: rgba(142, 142, 147, 0.08);
-            backdrop-filter: blur(10px);
-            font-size: 15px;
-            letter-spacing: -0.2px;
+            border-radius: 12px 12px 0 0;
+            color: var(--text-light);
+            font-weight: 500;
+            padding: 16px 24px;
+            margin-right: 4px;
+            transition: all 0.3s ease;
+            background: transparent;
         }
 
         .nav-tabs .nav-link:hover {
             border-color: transparent;
-            background: rgba(0, 122, 255, 0.08);
-            color: var(--ios-blue);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary-color);
         }
 
         .nav-tabs .nav-link.active {
-            background: var(--ios-blue);
-            color: white;
+            background: white;
+            color: var(--primary-color);
             border-color: transparent;
-            box-shadow: 
-                0 6px 20px rgba(0, 122, 255, 0.35),
-                inset 0 1px 0 rgba(255,255,255,0.2);
-        }
-
-        .nav-tabs .nav-link i {
-            margin-right: 8px;
+            box-shadow: var(--shadow-sm);
         }
 
         /* 内容区域 */
@@ -266,102 +139,74 @@
             overflow-x: auto; /* 支持水平滚动 */
         }
 
-        /* iOS 26 液态玻璃按钮组 */
+        /* 按钮组样式 */
         .action-toolbar {
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
             margin-bottom: 24px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: var(--radius-md);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
         }
 
-        /* iOS 26 液态玻璃按钮 */
         .btn-modern {
-            padding: 14px 22px;
-            border-radius: var(--radius-md);
+            padding: 12px 20px;
+            border-radius: 10px;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 14px;
             border: none;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
             gap: 8px;
             text-decoration: none;
-            position: relative;
-            overflow: hidden;
-            letter-spacing: -0.2px;
-        }
-
-        .btn-modern::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 50%;
-            background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 100%);
-            pointer-events: none;
+            box-shadow: var(--shadow-sm);
         }
 
         .btn-modern:hover {
-            transform: translateY(-2px) scale(1.02);
-        }
-
-        .btn-modern:active {
-            transform: translateY(0) scale(0.98);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
         }
 
         .btn-primary.btn-modern {
-            background: linear-gradient(135deg, var(--ios-blue) 0%, #5856D6 100%);
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
             color: white;
-            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.35);
         }
 
         .btn-success.btn-modern {
-            background: linear-gradient(135deg, var(--ios-green) 0%, #30D158 100%);
+            background: linear-gradient(135deg, var(--success-color), #059669);
             color: white;
-            box-shadow: 0 6px 20px rgba(52, 199, 89, 0.35);
         }
 
         .btn-warning.btn-modern {
-            background: linear-gradient(135deg, var(--ios-orange) 0%, #FF9F0A 100%);
+            background: linear-gradient(135deg, var(--warning-color), #d97706);
             color: white;
-            box-shadow: 0 6px 20px rgba(255, 149, 0, 0.35);
         }
 
         .btn-danger.btn-modern {
-            background: linear-gradient(135deg, var(--ios-red) 0%, #FF453A 100%);
+            background: linear-gradient(135deg, var(--error-color), #dc2626);
             color: white;
-            box-shadow: 0 6px 20px rgba(255, 59, 48, 0.35);
         }
 
         .btn-info.btn-modern {
-            background: linear-gradient(135deg, var(--ios-blue) 0%, var(--ios-blue-light) 100%);
+            background: linear-gradient(135deg, var(--info-color), #2563eb);
             color: white;
-            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.35);
         }
 
-        /* iOS 26 液态玻璃表格 */
+        /* 表格样式 */
         .table-container {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: var(--radius-md);
-            overflow: visible;
-            box-shadow: var(--shadow-md);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            min-width: 1400px;
-            width: 100%;
-            min-height: 700px;
+            background: white;
+            border-radius: 12px;
+            overflow: visible; /* 改为可见，防止截断 */
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            min-width: 1400px; /* 进一步增大最小宽度 */
+            width: 100%; /* 充分利用可用宽度 */
+            min-height: 700px; /* 设置统一的最小高度 */
         }
-
         .modern-table {
             width: 100%;
             margin: 0;
@@ -370,60 +215,50 @@
         }
 
         .modern-table thead th {
-            background: rgba(142, 142, 147, 0.08);
-            color: var(--text-secondary);
+            background: linear-gradient(135deg, var(--secondary-color), #f1f5f9);
+            color: var(--text-color);
             font-weight: 600;
-            padding: 14px 18px;
+            padding: 10px 16px; /* 进一步减少表头高度 */
             text-align: left;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 14px;
+            border-bottom: 2px solid var(--border-color);
+            font-size: 16px; /* 进一步增大表头字体 */
             white-space: nowrap;
-            letter-spacing: -0.1px;
-            text-transform: uppercase;
-        }
-
-        .modern-table thead th i {
-            color: var(--ios-blue);
-            margin-right: 8px;
         }
 
         .modern-table tbody td {
-            padding: 14px 18px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            padding: 10px 16px; /* 进一步减少单元格高度 */
+            border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
-            font-size: 15px;
-            line-height: 1.4;
-            color: var(--text-primary);
+            font-size: 16px; /* 进一步增大单元格字体 */
+            line-height: 1.3; /* 优化行高，更紧凑 */
         }
 
-        /* 数据列样式 */
-        .modern-table tbody td:nth-child(3),
-        .modern-table tbody td:nth-child(4),
-        .modern-table tbody td:nth-child(5),
-        .modern-table tbody td:nth-child(6),
-        .modern-table tbody td:nth-child(7) {
-            font-size: 15px;
-            font-weight: 500;
-            font-family: 'SF Mono', Monaco, monospace;
+        /* 专门为IP、端口、域名等数据列设置更大字体 */
+        .modern-table tbody td:nth-child(3), /* 本地IP */
+        .modern-table tbody td:nth-child(4), /* 本地端口 */
+        .modern-table tbody td:nth-child(5), /* 远程端口 */
+        .modern-table tbody td:nth-child(6), /* 自定义域名 */
+        .modern-table tbody td:nth-child(7)  /* 路由 */ {
+            font-size: 16px; /* 增大数据列字体 */
+            font-weight: 500; /* 略微加粗，提高可读性 */
         }
 
-        /* iOS 26 code 标签 */
+        /* code 标签字体优化 */
         .modern-table tbody td code {
-            font-size: 14px;
-            font-weight: 600;
-            background: rgba(0, 122, 255, 0.1);
-            padding: 4px 10px;
-            border-radius: var(--radius-sm);
-            color: var(--ios-blue);
-            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 16px; /* 确保 code 标签也是 16px */
+            font-weight: 600; /* 加粗，更突出 */
+            background: rgba(59, 130, 246, 0.08); /* 淡蓝色背景 */
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #1e40af; /* 深蓝色文字 */
         }
 
         .modern-table tbody tr {
-            transition: all 0.2s ease;
+            transition: background-color 0.2s ease;
         }
 
         .modern-table tbody tr:hover {
-            background-color: rgba(0, 122, 255, 0.04);
+            background-color: rgba(79, 70, 229, 0.02);
         }
 
         /* 为特定列设置宽度 */
@@ -439,36 +274,36 @@
             min-width: 200px;
         }
 
-        /* iOS 26 液态玻璃状态指示器 */
+        /* 状态指示器 */
         .status-badge {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 100px;
-            font-size: 13px;
-            font-weight: 600;
-            white-space: nowrap;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            gap: 6px;
+            padding: 6px 14px; /* 增加内边距，给文字更多空间 */
+            border-radius: 20px;
+            font-size: 13px; /* 略微增大字体 */
+            font-weight: 600; /* 加粗文字 */
+            text-transform: none; /* 去除大写转换，缩短宽度 */
+            letter-spacing: 0.02em; /* 减少字母间距 */
+            white-space: nowrap; /* 确保不换行 */
         }
 
         .status-badge.online {
-            background: rgba(52, 199, 89, 0.15);
-            color: var(--ios-green);
-            border: 1px solid rgba(52, 199, 89, 0.25);
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.2);
         }
 
         .status-badge.offline {
-            background: rgba(142, 142, 147, 0.15);
-            color: var(--ios-gray);
-            border: 1px solid rgba(142, 142, 147, 0.25);
+            background: rgba(107, 114, 128, 0.1);
+            color: var(--text-light);
+            border: 1px solid rgba(107, 114, 128, 0.2);
         }
 
         .status-badge.error {
-            background: rgba(255, 59, 48, 0.15);
-            color: var(--ios-red);
-            border: 1px solid rgba(255, 59, 48, 0.25);
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
         }
 
         .status-dot {
@@ -479,29 +314,28 @@
         }
 
         .status-dot.online {
-            background: var(--ios-green);
-            box-shadow: 0 0 10px rgba(52, 199, 89, 0.6);
-            animation: pulse-green 2s ease-in-out infinite;
+            background: var(--success-color);
+            box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+            animation: pulse-green 2s infinite;
         }
 
         .status-dot.offline {
-            background: var(--ios-gray);
+            background: var(--text-light);
         }
 
         .status-dot.error {
-            background: var(--ios-red);
-            box-shadow: 0 0 10px rgba(255, 59, 48, 0.6);
-            animation: pulse-red 2s ease-in-out infinite;
+            background: var(--error-color);
+            animation: pulse-red 2s infinite;
         }
 
         @keyframes pulse-green {
-            0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 10px rgba(52, 199, 89, 0.6); }
-            50% { transform: scale(1.2); opacity: 0.8; box-shadow: 0 0 16px rgba(52, 199, 89, 0.8); }
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
         }
 
         @keyframes pulse-red {
-            0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 10px rgba(255, 59, 48, 0.6); }
-            50% { transform: scale(1.2); opacity: 0.8; box-shadow: 0 0 16px rgba(255, 59, 48, 0.8); }
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
         }
         /* 操作按钮组 */
         .table-actions {
@@ -533,114 +367,1060 @@
             margin-right: 4px; /* 图标与文字间距 */
         }
 
-        /* iOS 26 液态玻璃用户操作按钮 */
+        /* 用户操作按钮 */
         .user-btn {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
+            min-height: 44px;
+            padding: 0 16px;
+            border-radius: 999px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: none;
+            gap: 8px;
+            border: 1px solid var(--surface-border);
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .user-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 50%;
-            background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%);
-            pointer-events: none;
+            transition: all 0.3s ease;
+            box-shadow: none;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--surface-panel);
+            color: var(--text-color);
         }
 
         .user-btn:hover {
-            transform: translateY(-2px) scale(1.05);
+            transform: translateY(-2px);
+            box-shadow: var(--surface-shadow-sm);
         }
 
-        .user-btn:active {
-            transform: scale(0.95);
-        }
-
-        .user-btn.btn-warning {
-            background: linear-gradient(135deg, var(--ios-orange) 0%, #FF9F0A 100%);
-            color: white;
-            box-shadow: 0 6px 16px rgba(255, 149, 0, 0.4);
-        }
-
-        .user-btn.btn-danger {
-            background: linear-gradient(135deg, var(--ios-red) 0%, #FF453A 100%);
-            color: white;
-            box-shadow: 0 6px 16px rgba(255, 59, 48, 0.4);
-        }
-
-        .user-btn.btn-info {
-            background: linear-gradient(135deg, var(--ios-blue) 0%, var(--ios-blue-light) 100%);
-            color: white;
-            box-shadow: 0 6px 16px rgba(0, 122, 255, 0.4);
-        }
-
-        /* iOS 26 液态玻璃日志区域 */
-        .log-container {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-md);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            overflow: hidden;
-            min-width: 1400px;
-            width: 100%;
-            min-height: 700px;
-        }
-
-        .log-header {
-            background: rgba(142, 142, 147, 0.08);
-            padding: 16px 20px;
-            border-bottom: 1px solid var(--border-color);
-            font-weight: 600;
-            color: var(--text-secondary);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .user-btn i {
             font-size: 15px;
         }
 
+        .user-btn-label {
+            white-space: nowrap;
+        }
+
+        .user-btn.user-btn-info {
+            background: rgba(59, 130, 246, 0.08);
+            border-color: rgba(59, 130, 246, 0.2);
+            color: #2563eb;
+        }
+
+        .user-btn.user-btn-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.2);
+            color: #d97706;
+        }
+
+        .user-btn.user-btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.18);
+            color: #dc2626;
+        }
+
+        /* 日志区域 */
+        .log-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            min-width: 1400px; /* 与表格容器保持一致的宽度 */
+            width: 100%; /* 充分利用可用宽度 */
+            min-height: 700px; /* 与表格容器保持一致的最小高度 */
+        }
+
         .log-content {
-            background: linear-gradient(180deg, #1C1C1E 0%, #2C2C2E 100%);
-            color: #E5E5EA;
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            background: #1a1a1a;
+            color: #e5e5e5;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
             padding: 20px;
-            height: 600px;
+            height: 600px; /* 增大日志窗口高度，从400px增加到600px */
             overflow-y: auto;
             white-space: pre-wrap;
             word-wrap: break-word;
             font-size: 13px;
-            line-height: 1.7;
-            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            line-height: 1.6;
         }
 
         .log-content::-webkit-scrollbar {
-            width: 10px;
+            width: 12px;
         }
 
         .log-content::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 5px;
+            background: #2d2d2d;
+            border-radius: 6px;
         }
 
         .log-content::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
+            background: #666;
+            border-radius: 6px;
         }
 
         .log-content::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: #888;
+        }
+
+        /* Vercel Tabs 与 contributors table 风格覆盖 */
+        :root {
+            --page-bg: linear-gradient(135deg, #dbeafe 0%, #eef2ff 45%, #f8fafc 100%);
+            --surface-bg: rgba(255, 255, 255, 0.92);
+            --surface-panel: #ffffff;
+            --surface-muted: #f8fafc;
+            --surface-border: #e2e8f0;
+            --surface-border-strong: #cbd5e1;
+            --surface-shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.14);
+            --surface-shadow-sm: 0 14px 36px rgba(15, 23, 42, 0.08);
+            --table-head-bg: #f8fafc;
+            --table-hover-bg: rgba(148, 163, 184, 0.08);
+            --pill-muted-bg: rgba(15, 23, 42, 0.05);
+            --tab-text: rgba(15, 23, 42, 0.6);
+            --tab-active: #0f172a;
+            --tab-hover-bg: rgba(15, 23, 42, 0.08);
+            --tab-active-line: #0f172a;
+            --empty-text: #64748b;
+            --type-tcp-bg: rgba(79, 70, 229, 0.12);
+            --type-tcp-text: #4338ca;
+            --type-udp-bg: rgba(14, 165, 233, 0.12);
+            --type-udp-text: #0369a1;
+            --type-http-bg: rgba(16, 185, 129, 0.12);
+            --type-http-text: #047857;
+            --type-https-bg: rgba(245, 158, 11, 0.14);
+            --type-https-text: #b45309;
+            --metric-running-bg: rgba(15, 118, 110, 0.08);
+            --metric-running-border: rgba(16, 185, 129, 0.22);
+            --metric-offline-bg: rgba(148, 163, 184, 0.08);
+            --metric-offline-border: rgba(148, 163, 184, 0.2);
+            --metric-error-bg: rgba(239, 68, 68, 0.08);
+            --metric-error-border: rgba(239, 68, 68, 0.18);
+            --terminal-bg: #0f172a;
+            --terminal-panel: rgba(15, 23, 42, 0.92);
+            --terminal-border: rgba(148, 163, 184, 0.22);
+            --terminal-text: #dbeafe;
+            --terminal-muted: #94a3b8;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                color-scheme: dark;
+                --page-bg: linear-gradient(135deg, #0f172a 0%, #111827 45%, #020617 100%);
+                --secondary-color: #0f172a;
+                --text-color: #e2e8f0;
+                --text-light: #94a3b8;
+                --text-muted: #64748b;
+                --border-color: rgba(148, 163, 184, 0.22);
+                --surface-bg: rgba(15, 23, 42, 0.9);
+                --surface-panel: #0f172a;
+                --surface-muted: rgba(30, 41, 59, 0.78);
+                --surface-border: rgba(148, 163, 184, 0.22);
+                --surface-border-strong: rgba(148, 163, 184, 0.3);
+                --surface-shadow-lg: 0 24px 60px rgba(2, 6, 23, 0.55);
+                --surface-shadow-sm: 0 14px 36px rgba(2, 6, 23, 0.35);
+                --table-head-bg: rgba(30, 41, 59, 0.92);
+                --table-hover-bg: rgba(148, 163, 184, 0.08);
+                --pill-muted-bg: rgba(255, 255, 255, 0.08);
+                --tab-text: rgba(255, 255, 255, 0.65);
+                --tab-active: #ffffff;
+                --tab-hover-bg: rgba(255, 255, 255, 0.1);
+                --tab-active-line: #ffffff;
+                --empty-text: #94a3b8;
+                --type-tcp-bg: rgba(129, 140, 248, 0.18);
+                --type-tcp-text: #c7d2fe;
+                --type-udp-bg: rgba(56, 189, 248, 0.18);
+                --type-udp-text: #bae6fd;
+                --type-http-bg: rgba(52, 211, 153, 0.18);
+                --type-http-text: #a7f3d0;
+                --type-https-bg: rgba(251, 191, 36, 0.18);
+                --type-https-text: #fde68a;
+                --metric-running-bg: rgba(16, 185, 129, 0.1);
+                --metric-running-border: rgba(52, 211, 153, 0.22);
+                --metric-offline-bg: rgba(148, 163, 184, 0.1);
+                --metric-offline-border: rgba(148, 163, 184, 0.18);
+                --metric-error-bg: rgba(248, 113, 113, 0.12);
+                --metric-error-border: rgba(248, 113, 113, 0.22);
+                --terminal-bg: #020617;
+                --terminal-panel: rgba(2, 6, 23, 0.94);
+                --terminal-border: rgba(148, 163, 184, 0.18);
+                --terminal-text: #e2e8f0;
+                --terminal-muted: #94a3b8;
+            }
+        }
+
+        body {
+            background: var(--page-bg);
+            color: var(--text-color);
+        }
+
+        .dashboard-header,
+        .main-card {
+            background: var(--surface-bg);
+            border: 1px solid var(--surface-border);
+            box-shadow: var(--surface-shadow-lg);
+        }
+
+        .tabs-shell {
+            position: relative;
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            padding: 18px 24px 10px;
+            border-bottom: 1px solid var(--surface-border);
+        }
+
+        .tabs-shell::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tabs-hover-highlight,
+        .tabs-active-indicator {
+            position: absolute;
+            pointer-events: none;
+            transition: all 0.3s ease;
+        }
+
+        .tabs-hover-highlight {
+            top: 18px;
+            height: 30px;
+            border-radius: 6px;
+            background: var(--tab-hover-bg);
+            opacity: 0;
+        }
+
+        .tabs-active-indicator {
+            bottom: 8px;
+            height: 2px;
+            background: var(--tab-active-line);
+        }
+
+        .nav-tabs.vercel-tabs {
+            position: relative;
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 6px;
+            padding: 0;
+            margin: 0;
+            background: transparent;
+        }
+
+        .nav-tabs.vercel-tabs .nav-item {
+            flex: 0 0 auto;
+        }
+
+        .nav-tabs.vercel-tabs .nav-link {
+            border: none;
+            border-radius: 6px;
+            height: 30px;
+            padding: 0 12px;
+            margin: 0;
+            background: transparent;
+            color: var(--tab-text);
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .nav-tabs.vercel-tabs .nav-link:hover,
+        .nav-tabs.vercel-tabs .nav-link:focus {
+            background: transparent;
+            color: var(--tab-active);
+        }
+
+        .nav-tabs.vercel-tabs .nav-link.active {
+            background: transparent;
+            color: var(--tab-active);
+            box-shadow: none;
+        }
+
+        .tab-content {
+            padding: 24px;
+            min-width: 0;
+            overflow-x: visible;
+        }
+
+        .action-toolbar {
+            background: var(--surface-muted);
+            border: 1px solid var(--surface-border);
+            border-radius: 16px;
+            box-shadow: none;
+            margin-bottom: 16px;
+            padding: 14px;
+        }
+
+        .btn-modern {
+            box-shadow: none;
+        }
+
+        .table-container {
+            background: var(--surface-panel);
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            box-shadow: var(--surface-shadow-sm);
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .table-surface-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--surface-border);
+            background: var(--surface-muted);
+        }
+
+        .table-surface-eyebrow {
+            margin: 0 0 6px;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .table-surface-title {
+            margin: 0 0 6px;
+            color: var(--text-color);
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .table-surface-description {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .table-surface-meta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 96px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: var(--pill-muted-bg);
+            color: var(--text-light);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .table-scroll-area {
+            overflow-x: auto;
+        }
+
+        .modern-table {
+            width: 100%;
+            min-width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .modern-table thead th {
+            background: var(--table-head-bg);
+            color: var(--text-light);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--surface-border);
+            white-space: nowrap;
+        }
+
+        .modern-table thead th i {
+            margin-right: 6px;
+            opacity: 0.7;
+        }
+
+        .modern-table tbody td {
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.45;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--surface-border);
+            background: transparent;
+        }
+
+        .modern-table tbody tr:hover {
+            background: var(--table-hover-bg);
+        }
+
+        .modern-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .modern-table tbody td strong {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .modern-table tbody td code {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--surface-border);
+            background: var(--pill-muted-bg);
+            color: var(--text-color);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .modern-table .badge {
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: none;
+        }
+
+        .proxy-type-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 68px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .proxy-type-tcp {
+            background: var(--type-tcp-bg);
+            color: var(--type-tcp-text);
+        }
+
+        .proxy-type-udp {
+            background: var(--type-udp-bg);
+            color: var(--type-udp-text);
+        }
+
+        .proxy-type-http {
+            background: var(--type-http-bg);
+            color: var(--type-http-text);
+        }
+
+        .proxy-type-https {
+            background: var(--type-https-bg);
+            color: var(--type-https-text);
+        }
+
+        .proxy-type-secondary {
+            background: var(--pill-muted-bg);
+            color: var(--text-light);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+        }
+
+        .status-page-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .status-surface {
+            background: var(--surface-panel);
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            box-shadow: var(--surface-shadow-sm);
+            overflow: hidden;
+        }
+
+        .status-surface-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 20px 20px 16px;
+            border-bottom: 1px solid var(--surface-border);
+            background: var(--surface-muted);
+        }
+
+        .status-badge-lg {
+            padding: 9px 16px;
+            font-size: 13px;
+        }
+
+        .status-badge.online {
+            background: rgba(16, 185, 129, 0.12);
+            color: #047857;
+            border: 1px solid rgba(16, 185, 129, 0.18);
+        }
+
+        .status-badge.offline {
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--text-light);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+        }
+
+        .status-badge.error {
+            background: rgba(239, 68, 68, 0.12);
+            color: #dc2626;
+            border: 1px solid rgba(239, 68, 68, 0.16);
+        }
+
+        .status-dot.online {
+            background: #10b981;
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+        }
+
+        .status-dot.offline {
+            background: #94a3b8;
+        }
+
+        .status-dot.error {
+            background: #ef4444;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+        }
+
+        .status-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+            padding: 18px 20px 20px;
+        }
+
+        .status-metric-card {
+            padding: 18px 18px 16px;
+            border-radius: 16px;
+            border: 1px solid var(--surface-border);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.92) 100%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-height: 132px;
+        }
+
+        .status-metric-card.metric-running {
+            background: var(--metric-running-bg);
+            border-color: var(--metric-running-border);
+        }
+
+        .status-metric-card.metric-offline {
+            background: var(--metric-offline-bg);
+            border-color: var(--metric-offline-border);
+        }
+
+        .status-metric-card.metric-error {
+            background: var(--metric-error-bg);
+            border-color: var(--metric-error-border);
+        }
+
+        .status-metric-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-light);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .status-metric-value {
+            color: var(--text-color);
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.15;
+            word-break: break-word;
+        }
+
+        .status-metric-hint {
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .status-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            align-items: start;
+        }
+
+        .status-layout > * {
+            width: 100%;
+        }
+
+        .status-actions-card .action-toolbar {
+            margin: 0;
+            border: 0;
+            border-radius: 0;
+            padding: 18px 20px 20px;
+            background: transparent;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+            width: 100%;
+        }
+
+        .status-actions-card .btn-modern {
+            width: 100%;
+            justify-content: center;
+            min-height: 48px;
+        }
+
+        .status-actions-note {
+            padding: 0 20px 20px;
+            margin: 0;
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .log-container.log-surface {
+            background: var(--surface-panel);
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            box-shadow: var(--surface-shadow-sm);
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .log-surface-header {
+            border-bottom: 1px solid var(--surface-border);
+        }
+
+        .log-surface-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .log-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--surface-border);
+            background: rgba(248, 250, 252, 0.72);
+        }
+
+        .log-toolbar-meta {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        .log-toolbar-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .log-toolbar .btn {
+            min-width: 42px;
+            border-radius: 12px;
+        }
+
+        .modal-dialog {
+            margin: 32px auto;
+        }
+
+        .modal-content {
+            background: var(--surface-bg);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            box-shadow: var(--surface-shadow-lg);
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 22px 26px 18px;
+            border-bottom: 1px solid var(--surface-border);
+            background: var(--surface-muted);
+        }
+
+        .modal-title {
+            color: var(--text-color);
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .modal-body {
+            padding: 24px 26px;
+        }
+
+        .modal-footer {
+            padding: 18px 26px 24px;
+            border-top: 1px solid var(--surface-border);
+            background: rgba(248, 250, 252, 0.7);
+            gap: 10px;
+        }
+
+        .modal-footer .btn,
+        .modal-inline-actions .btn {
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 999px;
+            font-weight: 600;
+        }
+
+        .modal-footer .btn-primary,
+        .modal-inline-actions .btn-outline-primary {
+            background: rgba(79, 70, 229, 0.1);
+            border-color: rgba(79, 70, 229, 0.18);
+            color: var(--primary-color);
+        }
+
+        .modal-footer .btn-secondary,
+        .modal-inline-actions .btn-outline-secondary {
+            background: var(--pill-muted-bg);
+            border-color: var(--surface-border);
+            color: var(--text-light);
+        }
+
+        .modal-footer .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.18);
+            color: #dc2626;
+        }
+
+        .modal-inline-actions .btn-outline-success {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: rgba(16, 185, 129, 0.18);
+            color: #047857;
+        }
+
+        .modal-inline-actions {
+            flex-wrap: wrap;
+        }
+
+        .modal-inline-actions .btn {
+            min-width: 110px;
+        }
+
+        .modal-note {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .form-section {
+            margin-top: 18px;
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px solid var(--surface-border);
+            background: rgba(248, 250, 252, 0.72);
+        }
+
+        .form-section:first-of-type {
+            margin-top: 16px;
+        }
+
+        .form-section-header {
+            margin-bottom: 14px;
+        }
+
+        .form-section-title {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .form-section-description {
+            margin: 4px 0 0;
+            color: var(--text-light);
+            font-size: 12px;
+            letter-spacing: 0.02em;
+        }
+
+        .form-switch-panel {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .form-grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        .form-grid-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .field-caption {
+            color: var(--text-light);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .modal-body .form-label {
+            margin-bottom: 0;
+            color: var(--text-color);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .modal-body .form-control,
+        .modal-body .form-select {
+            min-height: 46px;
+            border-radius: 14px;
+            border: 1px solid var(--surface-border);
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: none;
+        }
+
+        .modal-body textarea.form-control {
+            min-height: 320px;
+            padding-top: 14px;
+        }
+
+        .modal-body .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        .modal-body .form-check-label {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .modal-body .form-check {
+            margin: 0;
+        }
+
+        .btn-close {
+            border-radius: 999px;
+            padding: 10px;
+            background-size: 13px;
+            opacity: 0.72;
+        }
+
+        .btn-close:hover {
+            opacity: 1;
+        }
+
+        .result-modal-body {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .result-modal-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(79, 70, 229, 0.1);
+            color: var(--primary-color);
+            font-size: 22px;
+            flex: 0 0 auto;
+        }
+
+        .result-modal-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .result-modal-message {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 1200px) {
+            .status-actions-card .action-toolbar {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 900px) {
+            .status-actions-card .action-toolbar {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        .log-terminal-shell {
+            padding: 16px 20px 20px;
+            background: linear-gradient(180deg, rgba(248, 250, 252, 0.25) 0%, rgba(255, 255, 255, 0) 100%);
+        }
+
+        .log-terminal-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 16px 16px 0 0;
+            background: var(--terminal-panel);
+            color: var(--terminal-muted);
+            border: 1px solid var(--terminal-border);
+            border-bottom: none;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        .log-terminal-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .log-terminal-dots span {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .log-terminal-dots span:nth-child(1) {
+            background: #fb7185;
+        }
+
+        .log-terminal-dots span:nth-child(2) {
+            background: #fbbf24;
+        }
+
+        .log-terminal-dots span:nth-child(3) {
+            background: #34d399;
+        }
+
+        .log-content {
+            background: var(--terminal-bg);
+            color: var(--terminal-text);
+            border: 1px solid var(--terminal-border);
+            border-top: none;
+            border-radius: 0 0 16px 16px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            padding: 20px;
+            height: 560px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 13px;
+            line-height: 1.72;
+        }
+
+        .log-content.is-empty {
+            color: var(--terminal-muted);
+        }
+
+        .table-actions {
+            display: flex;
+            justify-content: flex-start;
+            gap: 8px;
+            width: 100%;
+            white-space: nowrap;
+        }
+
+        .btn-sm.btn-modern {
+            min-width: 72px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .form-check.form-switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+
+        .form-check-input {
+            cursor: pointer;
+            border-color: var(--surface-border-strong);
+        }
+
+        .form-check-input:checked {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .table-empty-state {
+            padding: 40px 16px;
+            text-align: center;
+            color: var(--empty-text);
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .tabs-shell {
+                padding: 14px 16px 10px;
+            }
+
+            .tabs-hover-highlight {
+                top: 14px;
+            }
+
+            .tab-content {
+                padding: 16px;
+            }
+
+            .table-surface-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .table-scroll-area {
+                overflow-x: auto;
+            }
+
+            .modern-table {
+                min-width: 980px;
+            }
+
+            .status-surface-header,
+            .log-toolbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .status-metrics-grid,
+            .status-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .status-actions-card .action-toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .log-toolbar-actions,
+            .log-surface-meta {
+                width: 100%;
+            }
+
+            .log-toolbar-actions {
+                justify-content: flex-start;
+            }
         }
 
         /* 移动端响应式设计 */
@@ -779,10 +1559,6 @@
                 border-radius: 8px;
             }
 
-            /* 服务状态页：停止服务按钮占满整行 */
-            #status .action-toolbar #stopBtn {
-                grid-column: 1 / -1;
-            }
             /* 移动端模态框样式 */
             .modal-dialog {
                 margin: 16px;
@@ -840,16 +1616,54 @@
                 grid-column: 1 / -1; /* 在两列布局下占满整行 */
             }
             
-            .log-header {
-                padding: 12px 16px;
-                font-size: 14px;
-            }
-            
             .log-content {
                 height: 450px; /* 同步增大移动端日志窗口高度 */
                 font-size: 12px;
                 padding: 16px;
                 line-height: 1.5;
+            }
+
+            .status-page-shell {
+                gap: 16px;
+            }
+
+            .status-surface-header {
+                padding: 18px 16px 14px;
+            }
+
+            .status-metrics-grid {
+                padding: 14px 16px 16px;
+                gap: 12px;
+            }
+
+            .status-metric-card {
+                min-height: auto;
+                padding: 16px;
+            }
+
+            .status-metric-value {
+                font-size: 22px;
+            }
+
+            .status-actions-card .action-toolbar,
+            .log-toolbar,
+            .log-terminal-shell {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .user-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .user-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .log-terminal-topbar {
+                padding: 12px 14px;
             }
             
             .log-content::-webkit-scrollbar {
@@ -887,6 +1701,24 @@
                 width: 6px;
                 height: 6px;
             }
+
+            .result-modal-body {
+                flex-direction: column;
+            }
+
+            .form-switch-panel {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .form-grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-inline-actions .btn,
+            .modal-footer .btn {
+                width: 100%;
+            }
             
             /* 隐藏桌面版特有的细节 */
             .btn-modern:hover {
@@ -922,6 +1754,10 @@
                 gap: 10px;
                 padding: 12px;
             }
+
+            .status-actions-card .action-toolbar {
+                grid-template-columns: 1fr;
+            }
             
             .modern-table {
                 min-width: 500px;
@@ -931,6 +1767,10 @@
             .log-content {
                 height: 380px; /* 同步增大小屏幕设备日志窗口高度 */
                 font-size: 11px;
+            }
+
+            .status-metric-value {
+                font-size: 20px;
             }
         }
         /* 进度条样式 */
@@ -999,29 +1839,28 @@
         .drag-scroll { cursor: grab; user-select: none; }
         .drag-scroll.dragging { cursor: grabbing; }
         
-        /* iOS 26 液态玻璃加载状态 */
+        /* 加载状态 */
         .loading-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.9);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 9999;
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(4px);
         }
         
         .loading-spinner {
-            width: 44px;
-            height: 44px;
-            border: 3px solid rgba(0, 122, 255, 0.15);
-            border-top: 3px solid var(--ios-blue);
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
             border-radius: 50%;
-            animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+            animation: spin 1s linear infinite;
         }
         
         @keyframes spin {
@@ -1029,208 +1868,24 @@
             100% { transform: rotate(360deg); }
         }
     
-        /* iOS 26 液态玻璃页脚 */
+        /* 页脚样式 */
         .app-footer {
-            height: 48px;
+            height: 40px; /* 降低高度，避免需要下滑才可见 */
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
-            color: var(--text-tertiary);
-            font-weight: 500;
-            font-size: 14px;
+            color: rgba(255, 255, 255, 0.92); /* 提升对比度的字体颜色 */
+            font-weight: 600;
         }
-
         .app-footer a {
-            color: var(--ios-blue);
+            color: rgba(255, 255, 255, 0.95); /* 链接默认白色 */
             text-decoration: none;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 12px;
-            border-radius: var(--radius-sm);
-            transition: all 0.2s ease;
         }
-
-        .app-footer a:hover { 
-            background: rgba(0, 122, 255, 0.1);
-            color: #0056CC;
-        }
-
-        /* ==================== iOS 26 深色模式 ==================== */
-        /* 手动深色模式 - 通过 class 切换 */
-        body.dark-mode {
-            background: linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 50%, #1C1C1E 100%) !important;
-            --glass-bg: rgba(44, 44, 46, 0.75);
-            --glass-bg-light: rgba(58, 58, 60, 0.8);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --text-primary: #FFFFFF;
-            --text-secondary: #EBEBF5;
-            --text-tertiary: #8E8E93;
-        }
-
-        body.dark-mode::before {
-            background: radial-gradient(circle at 20% 30%, rgba(0, 122, 255, 0.15) 0%, transparent 40%),
-                        radial-gradient(circle at 80% 70%, rgba(175, 82, 222, 0.12) 0%, transparent 40%) !important;
-        }
-
-        body.dark-mode .dashboard-header {
-            background: rgba(44, 44, 46, 0.75);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .dashboard-title {
-            color: #FFFFFF;
-        }
-
-        body.dark-mode .main-card {
-            background: rgba(44, 44, 46, 0.8);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .main-card::before {
-            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%);
-        }
-
-        body.dark-mode .nav-tabs .nav-link {
-            color: #8E8E93;
-            background: rgba(118, 118, 128, 0.12);
-        }
-
-        body.dark-mode .nav-tabs .nav-link:hover {
-            background: rgba(0, 122, 255, 0.15);
-            color: var(--ios-blue);
-        }
-
-        body.dark-mode .nav-tabs .nav-link.active {
-            background: var(--ios-blue);
-            color: white;
-        }
-
-        body.dark-mode .action-toolbar {
-            background: rgba(58, 58, 60, 0.6);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .table-container {
-            background: rgba(44, 44, 46, 0.7);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .modern-table thead th {
-            background: rgba(58, 58, 60, 0.5);
-            color: #EBEBF5;
-            border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .modern-table tbody td {
-            color: #FFFFFF;
-            border-bottom-color: rgba(255, 255, 255, 0.05);
-        }
-
-        body.dark-mode .modern-table tbody tr:hover {
-            background-color: rgba(0, 122, 255, 0.08);
-        }
-
-        body.dark-mode .modern-table tbody td code {
-            background: rgba(0, 122, 255, 0.2);
-            color: var(--ios-blue-light);
-        }
-
-        body.dark-mode .log-container {
-            background: rgba(44, 44, 46, 0.7);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .log-header {
-            background: rgba(58, 58, 60, 0.5);
-            color: #EBEBF5;
-            border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .form-control {
-            background: rgba(118, 118, 128, 0.24);
-            border-color: rgba(255, 255, 255, 0.1);
-            color: #FFFFFF;
-        }
-
-        body.dark-mode .form-control:focus {
-            background: rgba(118, 118, 128, 0.32);
-            border-color: var(--ios-blue);
-        }
-
-        body.dark-mode .form-label {
-            color: #EBEBF5;
-        }
-
-        body.dark-mode .modal-content {
-            background: rgba(44, 44, 46, 0.95);
-            border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .modal-header {
-            border-bottom-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .modal-header .modal-title {
-            color: #FFFFFF;
-        }
-
-        body.dark-mode .modal-footer {
-            border-top-color: rgba(255, 255, 255, 0.1);
-        }
-
-        body.dark-mode .btn-close {
-            filter: invert(1);
-        }
-
-        body.dark-mode .app-footer {
-            color: #8E8E93;
-        }
-
-        body.dark-mode .app-footer a {
-            color: var(--ios-blue);
-        }
-
-        body.dark-mode .loading-overlay {
-            background: rgba(28, 28, 30, 0.9);
-        }
-
-        /* 自动深色模式 */
-        @media (prefers-color-scheme: dark) {
-            body:not(.light-mode) {
-                background: linear-gradient(145deg, #1C1C1E 0%, #2C2C2E 50%, #1C1C1E 100%);
-            }
-
-            body:not(.light-mode)::before {
-                background: radial-gradient(circle at 20% 30%, rgba(0, 122, 255, 0.15) 0%, transparent 40%),
-                            radial-gradient(circle at 80% 70%, rgba(175, 82, 222, 0.12) 0%, transparent 40%);
-            }
-
-            body:not(.light-mode) .dashboard-header,
-            body:not(.light-mode) .main-card,
-            body:not(.light-mode) .table-container,
-            body:not(.light-mode) .log-container,
-            body:not(.light-mode) .action-toolbar {
-                background: rgba(44, 44, 46, 0.75);
-                border-color: rgba(255, 255, 255, 0.1);
-            }
-
-            body:not(.light-mode) .dashboard-title,
-            body:not(.light-mode) .modern-table tbody td {
-                color: #FFFFFF;
-            }
-
-            body:not(.light-mode) .nav-tabs .nav-link {
-                color: #8E8E93;
-                background: rgba(118, 118, 128, 0.12);
-            }
-
-            body:not(.light-mode) .modern-table thead th {
-                background: rgba(58, 58, 60, 0.5);
-                color: #EBEBF5;
-            }
-        }
+        .app-footer a:hover { color: #ffffff; text-decoration: underline; }
     
     </style>
 </head>
@@ -1250,40 +1905,44 @@
                 FRPC 管理控制台
             </div>
             <div class="user-actions">
-                <button class="user-btn btn-theme" onclick="toggleTheme()" id="themeToggle" title="切换主题">
-                    <i class="bi bi-sun-fill" id="themeIcon"></i>
-                </button>
-                <button class="user-btn btn-info" onclick="toggleSensitive()" id="toggleSensitiveBtn" title="显示敏感信息">
+                <button class="user-btn user-btn-info" onclick="toggleSensitive()" id="toggleSensitiveBtn" title="显示敏感信息">
                     <i class="bi bi-eye"></i>
+                    <span class="user-btn-label" id="toggleSensitiveBtnLabel">显示敏感</span>
                 </button>
-                <button class="user-btn btn-warning" onclick="openChangePasswordModal()" title="修改密码">
+                <button class="user-btn user-btn-warning" onclick="openChangePasswordModal()" title="修改密码">
                     <i class="bi bi-key"></i>
+                    <span class="user-btn-label">修改密码</span>
                 </button>
-                <a href="{{ url_for('auth.logout') }}" class="user-btn btn-danger" title="退出登录">
+                <a href="{{ url_for('auth.logout') }}" class="user-btn user-btn-danger" title="退出登录">
                     <i class="bi bi-box-arrow-right"></i>
+                    <span class="user-btn-label">退出登录</span>
                 </a>
             </div>
         </div>
 
         <!-- 主内容卡片 -->
         <div class="main-card fade-in-up">
-            <ul class="nav nav-tabs" id="configTabs" role="tablist">
+            <div class="tabs-shell">
+                <div class="tabs-hover-highlight" id="configTabsHover"></div>
+                <div class="tabs-active-indicator" id="configTabsActive"></div>
+                <ul class="nav nav-tabs vercel-tabs" id="configTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="server-tab" data-bs-toggle="tab" data-bs-target="#server" type="button" role="tab">
-                        <i class="bi bi-server"></i> 服务器配置
+                        服务器配置
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="client-tab" data-bs-toggle="tab" data-bs-target="#client" type="button" role="tab">
-                        <i class="bi bi-laptop"></i> 客户端配置
+                        客户端配置
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="status-tab" data-bs-toggle="tab" data-bs-target="#status" type="button" role="tab">
-                        <i class="bi bi-activity"></i> 服务状态
+                        服务状态
                     </button>
                 </li>
-            </ul>
+                </ul>
+            </div>
             <div class="tab-content" id="configTabsContent">
                 <!-- 服务器配置页面 -->
                 <div class="tab-pane fade show active" id="server" role="tabpanel">
@@ -1299,18 +1958,28 @@
                     </div>
                     
                     <div class="table-container">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th><i class="bi bi-server"></i> 服务器地址</th>
-                                    <th><i class="bi bi-diagram-3"></i> 端口</th>
-                                    <th><i class="bi bi-globe"></i> Web服务</th>
-                                    <th><i class="bi bi-shield-check"></i> 认证方式</th>
-                                    <th><i class="bi bi-gear"></i> 操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="serverTableBody"></tbody>
-                        </table>
+                        <div class="table-surface-header">
+                            <div>
+                                <p class="table-surface-eyebrow">Server Connections</p>
+                                <h3 class="table-surface-title">服务器连接配置</h3>
+                                <p class="table-surface-description">服务端监听、管理入口与鉴权策略。</p>
+                            </div>
+                            <div class="table-surface-meta"><span id="serverConfigCount">0</span> 项配置</div>
+                        </div>
+                        <div class="table-scroll-area">
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th><i class="bi bi-server"></i> 服务器地址</th>
+                                        <th><i class="bi bi-diagram-3"></i> 端口</th>
+                                        <th><i class="bi bi-globe"></i> Web服务</th>
+                                        <th><i class="bi bi-shield-check"></i> 认证方式</th>
+                                        <th><i class="bi bi-gear"></i> 操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serverTableBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <!-- 客户端配置页面 -->
@@ -1327,69 +1996,143 @@
                     </div>
                     
                     <div class="table-container">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th><i class="bi bi-tag"></i> 名称</th>
-                                    <th><i class="bi bi-diagram-2"></i> 类型</th>
-                                    <th><i class="bi bi-hdd-network"></i> 本地IP</th>
-                                    <th><i class="bi bi-plug"></i> 本地端口</th>
-                                    <th><i class="bi bi-arrow-right-circle"></i> 远程端口</th>
-                                    <th><i class="bi bi-globe"></i> 域名</th>
-                                    <th><i class="bi bi-signpost"></i> 路由</th>
-                                    <th><i class="bi bi-power"></i> 状态</th>
-                                    <th><i class="bi bi-gear"></i> 操作</th>
-                                </tr>
-                            </thead>
-                            <tbody id="clientTableBody"></tbody>
-                        </table>
+                        <div class="table-surface-header">
+                            <div>
+                                <p class="table-surface-eyebrow">Client Proxies</p>
+                                <h3 class="table-surface-title">客户端代理列表</h3>
+                                <p class="table-surface-description">代理协议、目标地址与公开入口。</p>
+                            </div>
+                            <div class="table-surface-meta"><span id="clientConfigCount">0</span> 项配置</div>
+                        </div>
+                        <div class="table-scroll-area">
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th><i class="bi bi-tag"></i> 名称</th>
+                                        <th><i class="bi bi-diagram-2"></i> 类型</th>
+                                        <th><i class="bi bi-hdd-network"></i> 本地IP</th>
+                                        <th><i class="bi bi-plug"></i> 本地端口</th>
+                                        <th><i class="bi bi-arrow-right-circle"></i> 远程端口</th>
+                                        <th><i class="bi bi-globe"></i> 域名</th>
+                                        <th><i class="bi bi-signpost"></i> 路由</th>
+                                        <th><i class="bi bi-power"></i> 状态</th>
+                                        <th><i class="bi bi-gear"></i> 操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clientTableBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <!-- 服务状态页面 -->
                 <div class="tab-pane fade" id="status" role="tabpanel">
-                    <div class="action-toolbar">
-                        <button class="btn btn-info btn-modern" onclick="confirmDownloadFrpc()">
-                            <i class="bi bi-download"></i>
-                            下载 FRPC
-                        </button>
-                        <button class="btn btn-primary btn-modern" onclick="openConfigManager()">
-                            <i class="bi bi-gear"></i>
-                            配置管理
-                        </button>
-                        <button class="btn btn-success btn-modern" onclick="startService()" id="startBtn">
-                            <i class="bi bi-play-fill"></i>
-                            启动服务
-                        </button>
-                        <button class="btn btn-warning btn-modern" onclick="restartService()" id="restartBtn">
-                            <i class="bi bi-arrow-clockwise"></i>
-                            重启服务
-                        </button>
-                        <button class="btn btn-danger btn-modern" onclick="stopService()" id="stopBtn">
-                            <i class="bi bi-stop-fill"></i>
-                            停止服务
-                        </button>
-                        <div class="status-badge offline" id="statusIndicator">
-                            <span class="status-dot offline"></span>
-                            <span class="status-text">FRPC 状态</span>
-                        </div>
-                    </div>
-                    
-                    <div class="log-container">
-                        <div class="log-header">
-                            <div>
-                                <i class="bi bi-journal-text"></i>
-                                服务日志
+                    <div class="status-page-shell">
+                        <section class="status-surface">
+                            <div class="status-surface-header">
+                                <div>
+                                    <p class="table-surface-eyebrow">Service Overview</p>
+                                    <h3 class="table-surface-title">FRPC 运行概览</h3>
+                                    <p class="table-surface-description">实例状态、日志链路与同步时间总览。</p>
+                                </div>
+                                <div class="status-badge status-badge-lg offline" id="statusIndicator">
+                                    <span class="status-dot offline"></span>
+                                    <span class="status-text">FRPC 状态</span>
+                                </div>
                             </div>
-                            <div>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="fetchLog()" title="刷新日志">
-                                    <i class="bi bi-arrow-clockwise"></i>
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="clearLog()" title="清空日志">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                            <div class="status-metrics-grid">
+                                <div class="status-metric-card metric-offline" id="statusStateCard">
+                                    <span class="status-metric-label"><i class="bi bi-activity"></i> 运行状态</span>
+                                    <strong class="status-metric-value" id="statusStateValue">等待检测</strong>
+                                    <span class="status-metric-hint" id="statusStateHint">实例状态摘要</span>
+                                </div>
+                                <div class="status-metric-card" id="statusPidCard">
+                                    <span class="status-metric-label"><i class="bi bi-cpu"></i> 进程 PID</span>
+                                    <strong class="status-metric-value" id="statusPidValue">--</strong>
+                                    <span class="status-metric-hint" id="statusPidHint">主进程标识</span>
+                                </div>
+                                <div class="status-metric-card" id="statusLogCard">
+                                    <span class="status-metric-label"><i class="bi bi-journal-text"></i> 日志流</span>
+                                    <strong class="status-metric-value" id="statusLogMode">等待连接</strong>
+                                    <span class="status-metric-hint" id="statusLogHint">日志链路状态</span>
+                                </div>
+                                <div class="status-metric-card" id="statusSyncCard">
+                                    <span class="status-metric-label"><i class="bi bi-clock-history"></i> 最近刷新</span>
+                                    <strong class="status-metric-value" id="statusLastUpdate">尚未刷新</strong>
+                                    <span class="status-metric-hint" id="statusSyncHint">最近同步时间</span>
+                                </div>
                             </div>
+                        </section>
+
+                        <div class="status-layout">
+                            <section class="status-surface status-actions-card">
+                                <div class="status-surface-header">
+                                    <div>
+                                        <p class="table-surface-eyebrow">Actions</p>
+                                        <h3 class="table-surface-title">服务控制</h3>
+                                        <p class="table-surface-description">实例生命周期与配置入口。</p>
+                                    </div>
+                                    <span class="table-surface-meta">Lifecycle Control</span>
+                                </div>
+                                <div class="action-toolbar">
+                                    <button class="btn btn-info btn-modern" onclick="confirmDownloadFrpc()">
+                                        <i class="bi bi-download"></i>
+                                        下载 FRPC
+                                    </button>
+                                    <button class="btn btn-primary btn-modern" onclick="openConfigManager()">
+                                        <i class="bi bi-gear"></i>
+                                        配置管理
+                                    </button>
+                                    <button class="btn btn-success btn-modern" onclick="startService()" id="startBtn">
+                                        <i class="bi bi-play-fill"></i>
+                                        启动服务
+                                    </button>
+                                    <button class="btn btn-warning btn-modern" onclick="restartService()" id="restartBtn">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                        重启服务
+                                    </button>
+                                    <button class="btn btn-danger btn-modern" onclick="stopService()" id="stopBtn">
+                                        <i class="bi bi-stop-fill"></i>
+                                        停止服务
+                                    </button>
+                                </div>
+                            </section>
+
+                            <section class="log-container log-surface">
+                                <div class="status-surface-header log-surface-header">
+                                    <div>
+                                        <p class="table-surface-eyebrow">Live Logs</p>
+                                        <h3 class="table-surface-title">服务日志</h3>
+                                        <p class="table-surface-description">运行输出、下载进度与事件回传。</p>
+                                    </div>
+                                    <div class="log-surface-meta">
+                                        <span class="table-surface-meta" id="logConnectionBadge">等待连接</span>
+                                        <span class="table-surface-meta" id="logLineCount">0 行</span>
+                                    </div>
+                                </div>
+                                <div class="log-toolbar">
+                                    <div class="log-toolbar-meta">上次更新：<span id="logUpdatedAt">尚未刷新</span></div>
+                                    <div class="log-toolbar-actions">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="fetchLog()" title="刷新日志">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="clearLog()" title="清空日志">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="log-terminal-shell">
+                                    <div class="log-terminal-topbar">
+                                        <div class="log-terminal-dots">
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                        </div>
+                                        <span>frpc runtime output</span>
+                                    </div>
+                                    <div class="log-content is-empty" id="logContent">正在加载日志...</div>
+                                </div>
+                            </section>
                         </div>
-                        <div class="log-content" id="logContent">正在加载日志...</div>
                     </div>
                 </div>
             </div>
@@ -1410,7 +2153,7 @@
 
     <!-- 服务器配置弹窗 -->
     <div class="modal fade" id="serverModal" tabindex="-1">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
           <form id="serverFormModal" onsubmit="return submitServerModal()">
             <div class="modal-header">
@@ -1419,76 +2162,98 @@
             </div>
             <div class="modal-body">
               <input type="hidden" id="serverEditIndex">
-              
-              <!-- 基本配置 -->
-              <div class="mb-3">
-                <label class="form-label">服务器地址 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="modalServerAddr" required>
-                <small class="form-text text-muted">服务端监听地址，默认 0.0.0.0</small>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">端口 <span class="text-danger">*</span></label>
-                <input type="number" class="form-control" id="modalServerPort" required>
-                <small class="form-text text-muted">服务端监听端口，默认 7000</small>
-              </div>
+              <p class="modal-note">定义服务端监听、管理入口与鉴权策略。</p>
 
-              <!-- Web服务配置 -->
-              <div class="mb-3">
-                <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="enableWebServer" onchange="toggleWebServer()">
-                  <label class="form-check-label" for="enableWebServer">启用 Web 服务</label>
+              <section class="form-section">
+                <div class="form-section-header">
+                  <div>
+                    <h6 class="form-section-title">基础参数</h6>
+                    <p class="form-section-description">监听地址与控制端口</p>
+                  </div>
                 </div>
-                <div id="webServerConfig" style="display: none;">
-                  <div class="mb-3">
-                    <label class="form-label">Web地址</label>
-                    <input type="text" class="form-control" id="modalWebAddr">
-                    <small class="form-text text-muted">Web服务监听地址</small>
+                <div class="form-grid form-grid-2">
+                  <div class="field-group">
+                    <label class="form-label">服务器地址 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="modalServerAddr" placeholder="0.0.0.0" required>
+                    <div class="field-caption">监听地址</div>
                   </div>
-                  <div class="mb-3">
-                    <label class="form-label">Web端口</label>
-                    <input type="number" class="form-control" id="modalWebPort">
-                    <small class="form-text text-muted">Web服务监听端口</small>
+                  <div class="field-group">
+                    <label class="form-label">端口 <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="modalServerPort" placeholder="7000" required>
+                    <div class="field-caption">控制端口</div>
                   </div>
-                  <div class="mb-3">
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="form-switch-panel">
+                  <div>
+                    <h6 class="form-section-title">Web 管理入口</h6>
+                    <p class="form-section-description">控制台监听与访问凭证</p>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enableWebServer" onchange="toggleWebServer()">
+                    <label class="form-check-label" for="enableWebServer">启用</label>
+                  </div>
+                </div>
+                <div id="webServerConfig" class="form-grid form-grid-2" style="display: none;">
+                  <div class="field-group">
+                    <label class="form-label">Web 地址</label>
+                    <input type="text" class="form-control" id="modalWebAddr" placeholder="0.0.0.0">
+                    <div class="field-caption">管理入口地址</div>
+                  </div>
+                  <div class="field-group">
+                    <label class="form-label">Web 端口</label>
+                    <input type="number" class="form-control" id="modalWebPort" placeholder="7500">
+                    <div class="field-caption">管理入口端口</div>
+                  </div>
+                  <div class="field-group">
                     <label class="form-label">用户名</label>
-                    <input type="text" class="form-control" id="modalWebUser">
-                    <small class="form-text text-muted">Web服务登录用户名</small>
+                    <input type="text" class="form-control" id="modalWebUser" placeholder="admin">
+                    <div class="field-caption">管理账号</div>
                   </div>
-                  <div class="mb-3">
+                  <div class="field-group">
                     <label class="form-label">密码</label>
-                    <input type="password" class="form-control" id="modalWebPassword">
-                    <small class="form-text text-muted">Web服务登录密码</small>
+                    <input type="password" class="form-control" id="modalWebPassword" placeholder="••••••••">
+                    <div class="field-caption">管理密码</div>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <!-- 认证配置 -->
-              <div class="mb-3">
-                <div class="form-check mb-2">
-                  <input class="form-check-input" type="checkbox" id="enableAuth" onchange="toggleAuth()">
-                  <label class="form-check-label" for="enableAuth">启用认证</label>
+              <section class="form-section">
+                <div class="form-switch-panel">
+                  <div>
+                    <h6 class="form-section-title">鉴权策略</h6>
+                    <p class="form-section-description">控制客户端访问方式</p>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enableAuth" onchange="toggleAuth()">
+                    <label class="form-check-label" for="enableAuth">启用</label>
+                  </div>
                 </div>
-                <div id="authConfig" style="display: none;">
-                  <div class="mb-3">
+                <div id="authConfig" class="form-grid" style="display: none;">
+                  <div class="field-group">
                     <label class="form-label">认证方式</label>
-                    <select class="form-control" id="modalAuthMethod">
+                    <select class="form-control" id="modalAuthMethod" onchange="toggleAuthMethod()">
                       <option value="token">Token</option>
                       <option value="oidc">OIDC</option>
                     </select>
-                    <small class="form-text text-muted">认证方式，默认为 token</small>
+                    <div class="field-caption">鉴权模式</div>
                   </div>
-                  <div class="mb-3" id="tokenAuthConfig">
-                    <label class="form-label">Token</label>
-                    <input type="text" class="form-control" id="modalAuthToken">
-                    <small class="form-text text-muted">认证令牌，客户端需要设置相同的值</small>
-                  </div>
-                  <div class="mb-3" id="oidcAuthConfig" style="display: none;">
-                    <label class="form-label">Issuer</label>
-                    <input type="text" class="form-control" id="modalAuthIssuer">
-                    <small class="form-text text-muted">OIDC 发行者地址</small>
+                  <div class="form-grid form-grid-2">
+                    <div class="field-group" id="tokenAuthConfig">
+                      <label class="form-label">Token</label>
+                      <input type="text" class="form-control" id="modalAuthToken" placeholder="shared-secret">
+                      <div class="field-caption">共享凭证</div>
+                    </div>
+                    <div class="field-group" id="oidcAuthConfig" style="display: none;">
+                      <label class="form-label">Issuer</label>
+                      <input type="text" class="form-control" id="modalAuthIssuer" placeholder="https://issuer.example.com">
+                      <div class="field-caption">OIDC 发行者</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </section>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -1501,7 +2266,7 @@
 
     <!-- 客户端配置弹窗 -->
     <div class="modal fade" id="clientModal" tabindex="-1">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
           <form id="clientFormModal" onsubmit="return submitClientModal()">
             <div class="modal-header">
@@ -1510,54 +2275,88 @@
             </div>
             <div class="modal-body">
               <input type="hidden" id="clientEditIndex">
-              <div class="mb-3">
-                <label class="form-label">名称 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="modalClientName" required>
-                <small class="form-text text-muted">代理名称，必填</small>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">类型 <span class="text-danger">*</span></label>
-                <select class="form-control" id="modalClientType" required onchange="toggleFields()">
-                  <option value="tcp">TCP</option>
-                  <option value="udp">UDP</option>
-                  <option value="http">HTTP</option>
-                  <option value="https">HTTPS</option>
-                  <option value="stcp">STCP</option>
-                  <option value="sudp">SUDP</option>
-                  <option value="xtcp">XTCP</option>
-                </select>
-                <small class="form-text text-muted">代理类型，必填</small>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">本地IP <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="modalClientLocalIP" required>
-                <small class="form-text text-muted">本地服务IP，必填</small>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">本地端口 <span class="text-danger">*</span></label>
-                <input type="number" class="form-control" id="modalClientLocalPort" required>
-                <small class="form-text text-muted">本地服务端口，必填</small>
-              </div>
-              <div class="mb-3 remote-port-field">
-                <label class="form-label">远程端口</label>
-                <input type="number" class="form-control" id="modalClientRemotePort">
-                <small class="form-text text-muted">远程服务端口，TCP/UDP类型必填</small>
-              </div>
-              <div class="mb-3 domain-field" style="display: none;">
-                <label class="form-label">自定义域名</label>
-                <input type="text" class="form-control" id="modalClientDomains">
-                <small class="form-text text-muted">HTTP/HTTPS类型可选，多个域名用逗号分隔</small>
-              </div>
-              <div class="mb-3 domain-field" style="display: none;">
-                <label class="form-label">路由</label>
-                <input type="text" class="form-control" id="modalClientRoute">
-                <small class="form-text text-muted">HTTP/HTTPS类型可选，URL路由规则</small>
-              </div>
-              <div class="mb-3 domain-field" style="display: none;">
-                <label class="form-label">BasicAuth</label>
-                <input type="text" class="form-control" id="modalClientBasicAuth">
-                <small class="form-text text-muted">HTTP/HTTPS类型可选，格式：用户名:密码</small>
-              </div>
+              <p class="modal-note">定义代理协议、回源目标与公开入口。</p>
+
+              <section class="form-section">
+                <div class="form-section-header">
+                  <div>
+                    <h6 class="form-section-title">基础信息</h6>
+                    <p class="form-section-description">代理名称与协议类型</p>
+                  </div>
+                </div>
+                <div class="form-grid form-grid-2">
+                  <div class="field-group">
+                    <label class="form-label">名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="modalClientName" placeholder="dashboard" required>
+                    <div class="field-caption">代理标识</div>
+                  </div>
+                  <div class="field-group">
+                    <label class="form-label">类型 <span class="text-danger">*</span></label>
+                    <select class="form-control" id="modalClientType" required onchange="toggleFields()">
+                      <option value="tcp">TCP</option>
+                      <option value="udp">UDP</option>
+                      <option value="http">HTTP</option>
+                      <option value="https">HTTPS</option>
+                      <option value="stcp">STCP</option>
+                      <option value="sudp">SUDP</option>
+                      <option value="xtcp">XTCP</option>
+                    </select>
+                    <div class="field-caption">转发协议</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="form-section-header">
+                  <div>
+                    <h6 class="form-section-title">回源目标</h6>
+                    <p class="form-section-description">本地服务地址与端口</p>
+                  </div>
+                </div>
+                <div class="form-grid form-grid-2">
+                  <div class="field-group">
+                    <label class="form-label">本地 IP <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="modalClientLocalIP" placeholder="127.0.0.1" required>
+                    <div class="field-caption">回源地址</div>
+                  </div>
+                  <div class="field-group">
+                    <label class="form-label">本地端口 <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="modalClientLocalPort" placeholder="8080" required>
+                    <div class="field-caption">回源端口</div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="form-section-header">
+                  <div>
+                    <h6 class="form-section-title">公开入口</h6>
+                    <p class="form-section-description">根据协议决定端口、域名与访问认证</p>
+                  </div>
+                </div>
+                <div class="form-grid form-grid-2">
+                  <div class="field-group remote-port-field">
+                    <label class="form-label">远程端口</label>
+                    <input type="number" class="form-control" id="modalClientRemotePort" placeholder="7001">
+                    <div class="field-caption">TCP / UDP 暴露端口</div>
+                  </div>
+                  <div class="field-group domain-field" style="display: none;">
+                    <label class="form-label">自定义域名</label>
+                    <input type="text" class="form-control" id="modalClientDomains" placeholder="example.com, api.example.com">
+                    <div class="field-caption">HTTP / HTTPS 域名</div>
+                  </div>
+                  <div class="field-group domain-field" style="display: none;">
+                    <label class="form-label">路由</label>
+                    <input type="text" class="form-control" id="modalClientRoute" placeholder="/app">
+                    <div class="field-caption">路由前缀</div>
+                  </div>
+                  <div class="field-group domain-field" style="display: none;">
+                    <label class="form-label">访问认证</label>
+                    <input type="text" class="form-control" id="modalClientBasicAuth" placeholder="user:password">
+                    <div class="field-caption">BasicAuth 凭证</div>
+                  </div>
+                </div>
+              </section>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -1629,7 +2428,15 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p id="resultModalMessage"></p>
+                <div class="result-modal-body">
+                    <div class="result-modal-icon" id="resultModalIcon">
+                        <i class="bi bi-stars"></i>
+                    </div>
+                    <div class="result-modal-copy">
+                        <p class="modal-note">执行反馈</p>
+                        <p class="result-modal-message" id="resultModalMessage"></p>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
@@ -1667,7 +2474,7 @@
             </div>
             <div class="modal-body">
                 <p>是否下载 frpc 程序？</p>
-                <p class="text-muted">下载后将自动解压到根目录。</p>
+                <p class="modal-note">归档将写入持久化目录并自动解压。</p>
                 <div class="progress-container" id="downloadProgressContainer">
                     <div class="progress">
                         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
@@ -1693,6 +2500,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <p class="modal-note">直接编辑当前运行配置。</p>
         <div class="mb-3">
           <label class="form-label">导入本地 frpc.json：</label>
           <input type="file" id="importConfigFile" accept="application/json,.json" class="form-control" />
@@ -1702,7 +2510,7 @@
           <textarea id="configTextarea" class="form-control" rows="12" placeholder="粘贴或编辑 frpc.json 配置"></textarea>
           <div id="configFormatTip" class="form-text text-danger"></div>
         </div>
-        <div class="mb-3 d-flex gap-2">
+        <div class="mb-3 d-flex gap-2 modal-inline-actions">
           <button class="btn btn-outline-primary" type="button" onclick="exportConfigFile()">导出配置</button>
           <button class="btn btn-outline-secondary" type="button" onclick="readConfigFile()">读取当前配置</button>
           <button class="btn btn-outline-success" type="button" onclick="saveConfigFile()">保存配置</button>
@@ -1714,77 +2522,6 @@
 
 <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
 <script>
-// ==================== 主题切换功能 ====================
-// 初始化主题
-function initTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-        document.body.classList.add('dark-mode');
-        updateThemeIcon(true);
-    } else if (savedTheme === 'light') {
-        document.body.classList.add('light-mode');
-        updateThemeIcon(false);
-    } else {
-        updateThemeIcon(prefersDark);
-    }
-}
-
-// 切换主题
-function toggleTheme() {
-    const isDark = document.body.classList.contains('dark-mode');
-    const themeToggle = document.getElementById('themeToggle');
-    
-    // 添加动画效果
-    if (themeToggle) {
-        themeToggle.style.transform = 'scale(0.8) rotate(180deg)';
-    }
-    
-    setTimeout(() => {
-        if (isDark) {
-            document.body.classList.remove('dark-mode');
-            document.body.classList.add('light-mode');
-            localStorage.setItem('theme', 'light');
-            updateThemeIcon(false);
-        } else {
-            document.body.classList.add('dark-mode');
-            document.body.classList.remove('light-mode');
-            localStorage.setItem('theme', 'dark');
-            updateThemeIcon(true);
-        }
-        if (themeToggle) {
-            themeToggle.style.transform = 'scale(1) rotate(0deg)';
-        }
-    }, 150);
-}
-
-// 更新主题图标
-function updateThemeIcon(isDark) {
-    const icon = document.getElementById('themeIcon');
-    if (icon) {
-        icon.className = isDark ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
-    }
-}
-
-// 监听系统主题变化
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-    if (!localStorage.getItem('theme')) {
-        if (e.matches) {
-            document.body.classList.add('dark-mode');
-            document.body.classList.remove('light-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
-            document.body.classList.add('light-mode');
-        }
-        updateThemeIcon(e.matches);
-    }
-});
-
-// 页面加载时初始化主题
-initTheme();
-
-// ==================== 全局 fetch 拦截器 ====================
 // 全局 fetch 拦截器：若发现 401/403，自动跳转至登录页
 (function() {
   const _fetch = window.fetch;
@@ -1814,12 +2551,15 @@ function updateSensitiveBtn() {
     const btn = document.getElementById('toggleSensitiveBtn');
     if (!btn) return;
     const icon = btn.querySelector('i');
+    const label = document.getElementById('toggleSensitiveBtnLabel');
     if (hideSensitive) {
         icon.className = 'bi bi-eye';
         btn.title = '显示敏感信息';
+        if (label) label.textContent = '显示敏感';
     } else {
         icon.className = 'bi bi-eye-slash';
         btn.title = '隐藏敏感信息';
+        if (label) label.textContent = '隐藏敏感';
     }
 }
 function toggleSensitive() {
@@ -1901,12 +2641,12 @@ async function handleChangePassword(event) {
     const confirmPassword = document.getElementById('confirmPassword').value;
     
     if (!currentPassword || !newPassword || !confirmPassword) {
-        alert('请填写所有密码字段');
+        showResultModal('校验失败', '请填写所有密码字段');
         return false;
     }
     
     if (newPassword !== confirmPassword) {
-        alert('两次输入的新密码不一致');
+        showResultModal('校验失败', '两次输入的新密码不一致');
         return false;
     }
     
@@ -1927,15 +2667,15 @@ async function handleChangePassword(event) {
         if (data.status === 'success') {
             // 关闭修改密码对话框
             bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
-            alert(data.message);
-            // 重定向到登录页面
-            window.location.href = '/login';
+            showResultModal('密码修改成功', data.message, () => {
+                window.location.href = '/login';
+            });
         } else {
-            alert(data.message || '密码修改失败');
+            showResultModal('密码修改失败', data.message || '密码修改失败');
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('密码修改失败，请重试');
+        showResultModal('密码修改失败', '密码修改失败，请重试');
     }
     return false;
 }
@@ -1970,14 +2710,28 @@ async function loadConfig() {
             // 如果返回的不是JSON，可能是未登录
             window.location.href = '/login';
         } else {
-            alert('加载配置失败，请重试');
+            showResultModal('加载失败', '加载配置失败，请重试');
         }
     }
 }
 
 function renderServerTable() {
     const tbody = document.getElementById('serverTableBody');
+    const count = document.getElementById('serverConfigCount');
+    if (count) count.textContent = serverConfigs.length;
     tbody.innerHTML = '';
+
+    if (!serverConfigs.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5">
+                    <div class="table-empty-state">暂无服务器配置，点击上方“添加配置”开始创建。</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
     serverConfigs.forEach((cfg, idx) => {
         const webStatus = cfg.webServer ? 
             `<span class="status-badge online"><span class="status-dot online"></span>已启用</span>` : 
@@ -2013,14 +2767,14 @@ function toggleFields() {
     
     // 重置所有字段的显示状态
     domainFields.forEach(field => field.style.display = 'none');
-    remotePortField.style.display = 'block';
+    remotePortField.style.display = 'flex';
     
     // 根据类型显示相应字段
     if (type === 'http' || type === 'https') {
-        domainFields.forEach(field => field.style.display = 'block');
+        domainFields.forEach(field => field.style.display = 'flex');
         remotePortField.style.display = 'none';
     } else if (type === 'tcp' || type === 'udp') {
-        remotePortField.style.display = 'block';
+        remotePortField.style.display = 'flex';
     } else {
         remotePortField.style.display = 'none';
     }
@@ -2101,14 +2855,23 @@ function submitClientModal() {
 
 function renderClientTable() {
     const tbody = document.getElementById('clientTableBody');
+    const count = document.getElementById('clientConfigCount');
+    if (count) count.textContent = clientConfigs.length;
     tbody.innerHTML = '';
+
+    if (!clientConfigs.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9">
+                    <div class="table-empty-state">暂无客户端代理配置，点击上方“添加配置”开始创建。</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
     clientConfigs.forEach((cfg, idx) => {
-        const typeClass = {
-            'tcp': 'primary',
-            'udp': 'info', 
-            'http': 'success',
-            'https': 'warning'
-        }[cfg.type] || 'secondary';
+        const typeClass = cfg.type ? `proxy-type-${cfg.type}` : 'proxy-type-secondary';
         
         const enabledStatus = cfg.enabled !== false ? 
             `<span class="status-badge online"><span class="status-dot online"></span>已启用</span>` :
@@ -2116,7 +2879,7 @@ function renderClientTable() {
         
         tbody.innerHTML += `<tr>
             <td><strong>${cfg.name || '-'}</strong></td>
-            <td><span class="badge bg-${typeClass}">${cfg.type ? cfg.type.toUpperCase() : '-'}</span></td>
+            <td><span class="proxy-type-badge ${typeClass}">${cfg.type ? cfg.type.toUpperCase() : '-'}</span></td>
             <td><code>${fmtSensitive(cfg.localIP)}</code></td>
             <td><code>${fmtSensitive(cfg.localPort)}</code></td>
             <td><code>${hideSensitive ? fmtSensitive(cfg.remotePort) : (cfg.remotePort ?? '-')}</code></td>
@@ -2150,7 +2913,7 @@ function renderClientTable() {
 function toggleWebServer() {
     const webServerConfig = document.getElementById('webServerConfig');
     const isChecked = document.getElementById('enableWebServer').checked;
-    webServerConfig.style.display = isChecked ? 'block' : 'none';
+    webServerConfig.style.display = isChecked ? 'grid' : 'none';
     
     // 如果未选中，清空相关字段
     if (!isChecked) {
@@ -2165,7 +2928,7 @@ function toggleWebServer() {
 function toggleAuth() {
     const authConfig = document.getElementById('authConfig');
     const isChecked = document.getElementById('enableAuth').checked;
-    authConfig.style.display = isChecked ? 'block' : 'none';
+    authConfig.style.display = isChecked ? 'grid' : 'none';
     
     // 如果未选中，清空相关字段
     if (!isChecked) {
@@ -2178,8 +2941,8 @@ function toggleAuth() {
 // 切换认证方式配置
 function toggleAuthMethod() {
     const method = document.getElementById('modalAuthMethod').value;
-    document.getElementById('tokenAuthConfig').style.display = method === 'token' ? 'block' : 'none';
-    document.getElementById('oidcAuthConfig').style.display = method === 'oidc' ? 'block' : 'none';
+    document.getElementById('tokenAuthConfig').style.display = method === 'token' ? 'flex' : 'none';
+    document.getElementById('oidcAuthConfig').style.display = method === 'oidc' ? 'flex' : 'none';
     
     // 切换认证方式时清空另一个方式的字段
     if (method === 'token') {
@@ -2357,71 +3120,88 @@ function deleteClient(idx) {
     });
 }
 
+async function persistConfigArtifacts(config, options = {}) {
+    const {
+        onSuccess = null,
+        successMessage = '配置已成功保存',
+        successWithoutEnabledMessage = '配置已保存，但没有启用的客户端配置',
+        frpcSaveFailedMessage = '保存成功，但 frpc.json 保存失败！',
+        frpcDeleteFailedMessage = '保存成功，但删除 frpc.json 失败！'
+    } = options;
+
+    const configResponse = await fetch('/save-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+    });
+
+    if (!configResponse.ok) throw new Error('保存配置失败');
+    const configResult = await configResponse.json();
+    if (configResult.status !== 'success') {
+        throw new Error(configResult.message || '保存配置失败');
+    }
+
+    const enabledProxies = (config.proxies || []).filter(proxy => proxy.enabled !== false);
+    let resultMessage = successMessage;
+
+    if (enabledProxies.length > 0) {
+        const frpcConfig = {
+            ...config,
+            proxies: enabledProxies.map(proxy => {
+                const { enabled, ...rest } = proxy;
+                return rest;
+            })
+        };
+
+        try {
+            const frpcResponse = await fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(frpcConfig)
+            });
+            if (!frpcResponse.ok) throw new Error('保存 frpc 配置失败');
+            const frpcResult = await frpcResponse.json();
+            if (frpcResult.status !== 'success') {
+                throw new Error(frpcResult.message || '保存 frpc 配置失败');
+            }
+        } catch (error) {
+            resultMessage = frpcSaveFailedMessage;
+        }
+    } else {
+        resultMessage = successWithoutEnabledMessage;
+        try {
+            const deleteResponse = await fetch('/delete-frpc-config', {
+                method: 'POST'
+            });
+            if (!deleteResponse.ok) throw new Error('删除 frpc 配置失败');
+        } catch (error) {
+            resultMessage = frpcDeleteFailedMessage;
+        }
+    }
+
+    if (typeof onSuccess === 'function') {
+        await onSuccess();
+    }
+
+    return { message: resultMessage };
+}
+
 // 保存配置
 async function saveConfig() {
     try {
         if (serverConfigs.length === 0) throw new Error('请至少添加一个服务器配置');
         const server = serverConfigs[0];
         
-        // 保存到 config.json（包含所有配置，包括启用和未启用的）
         const config = {
             serverAddr: server.serverAddr,
             serverPort: server.serverPort,
             webServer: server.webServer,
             auth: server.auth,
-            proxies: clientConfigs  // 包含所有客户端配置，包括启用状态
+            proxies: clientConfigs
         };
-        
-        // 保存到 config.json
-        const configResponse = await fetch('/save-config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        });
-        
-        if (!configResponse.ok) throw new Error('保存配置失败');
-        const configResult = await configResponse.json();
-        
-        // 检查是否有启用的客户端配置
-        const enabledProxies = clientConfigs.filter(proxy => proxy.enabled !== false);
-        
-        if (enabledProxies.length > 0) {
-            // 保存到 frpc.json（只包含启用的配置，不包含 enabled 字段）
-            const frpcConfig = {
-                serverAddr: server.serverAddr,
-                serverPort: server.serverPort,
-                webServer: server.webServer,
-                auth: server.auth,
-                proxies: enabledProxies.map(proxy => {
-                    const { enabled, ...rest } = proxy;
-                    return rest;
-                })
-            };
-            
-            const frpcResponse = await fetch('/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(frpcConfig)
-            });
-            
-            if (!frpcResponse.ok) throw new Error('保存 frpc 配置失败');
-            const frpcResult = await frpcResponse.json();
-            
-            if (frpcResult.status === 'success') {
-                showResultModal('保存成功', '配置已成功保存');
-            } else {
-                throw new Error(frpcResult.message || '保存失败');
-            }
-        } else {
-            // 如果没有启用的配置，删除 frpc.json
-            const deleteResponse = await fetch('/delete-frpc-config', {
-                method: 'POST'
-            });
-            
-            if (!deleteResponse.ok) throw new Error('删除 frpc 配置失败');
-            
-            showResultModal('保存成功', '配置已保存，但没有启用的客户端配置');
-        }
+
+        const result = await persistConfigArtifacts(config);
+        showResultModal('保存成功', result.message);
     } catch (e) {
         showResultModal('保存失败', '保存配置失败：' + e.message);
     }
@@ -2430,8 +3210,30 @@ async function saveConfig() {
 // 显示操作结果对话框
 function showResultModal(title, message, onClose) {
     const modalEl = document.getElementById('resultModal');
+    const iconWrap = document.getElementById('resultModalIcon');
+    const icon = iconWrap ? iconWrap.querySelector('i') : null;
     document.getElementById('resultModalTitle').textContent = title;
     document.getElementById('resultModalMessage').textContent = message;
+
+    if (iconWrap && icon) {
+        iconWrap.style.background = 'rgba(79, 70, 229, 0.1)';
+        iconWrap.style.color = 'var(--primary-color)';
+        icon.className = 'bi bi-stars';
+
+        if (/成功|完成|已取消/.test(title)) {
+            iconWrap.style.background = 'rgba(16, 185, 129, 0.12)';
+            iconWrap.style.color = '#047857';
+            icon.className = /取消/.test(title) ? 'bi bi-slash-circle' : 'bi bi-check2-circle';
+        } else if (/失败|错误|异常/.test(title)) {
+            iconWrap.style.background = 'rgba(239, 68, 68, 0.12)';
+            iconWrap.style.color = '#dc2626';
+            icon.className = 'bi bi-exclamation-octagon';
+        } else if (/确认|提示/.test(title)) {
+            iconWrap.style.background = 'rgba(59, 130, 246, 0.12)';
+            iconWrap.style.color = '#2563eb';
+            icon.className = 'bi bi-info-circle';
+        }
+    }
 
     // 计算当前已显示模态框的最高 z-index，使结果弹窗位于最上层
     const openModals = Array.from(document.querySelectorAll('.modal.show'));
@@ -2580,6 +3382,7 @@ function connectWebSocket() {
         // 已连接则直接返回
         if (ws && ws.readyState === WebSocket.OPEN) {
             console.log('WebSocket 已连接');
+            setLogConnectionState('实时连接');
             resolve(ws);
             return;
         }
@@ -2601,11 +3404,13 @@ function connectWebSocket() {
             console.log('WebSocket 连接已建立');
             wsRetryCount = 0;  // 重置重试计数
             if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+            setLogConnectionState('实时连接');
             resolve(ws);
         };
 
         ws.onclose = function(event) {
             console.log('WebSocket 连接已关闭，代码:', event.code, '原因:', event.reason);
+            setLogConnectionState('连接中断');
             if (!wsShouldReconnect) {
                 console.log('本次关闭为主动关闭，不进行重连。');
                 return;
@@ -2621,6 +3426,7 @@ function connectWebSocket() {
 
         ws.onerror = function(error) {
             console.warn('WebSocket 错误:', error);
+            setLogConnectionState('连接异常');
             // 错误由 onclose 触发重连
         };
 
@@ -2630,24 +3436,14 @@ function connectWebSocket() {
                 const data = JSON.parse(event.data);
                 switch(data.type) {
                     case 'log': {
-                        const logOutput = document.getElementById('logContent');
-                        if (logOutput) {
-                            logOutput.textContent = data.content || '暂无日志';
-                            logOutput.scrollTop = logOutput.scrollHeight;
-                            if (!logOutput.textContent || logOutput.textContent === '暂无日志') {
-                                logOutput.innerText = data.content || '暂无日志';
-                            }
-                            if (!logOutput.innerText || logOutput.innerText === '暂无日志') {
-                                logOutput.innerHTML = (data.content || '暂无日志').replace(/\n/g, '<br>');
-                            }
-                        }
+                        updateLogContent(data.content || '暂无日志');
+                        setLogConnectionState('实时连接');
                         break;
                     }
                     case 'download_progress': {
-                        const logOutput2 = document.getElementById('logContent');
                         if (data.message) {
-                            logOutput2.textContent += `${data.message}\n`;
-                            logOutput2.scrollTop = logOutput2.scrollHeight;
+                            appendLogMessage(data.message);
+                            setLogConnectionState('任务输出');
                             const m = data.message.match(/下载进度: ([\d.]+)%/);
                             if (m) {
                                 const progress = parseFloat(m[1]);
@@ -2658,17 +3454,21 @@ function connectWebSocket() {
                             }
                         }
                         if (data.completed) {
-                            if (data.error) {
+                            if (data.cancelled) {
+                                showResultModal('下载已取消', data.message || '下载任务已被取消');
+                                resetDownloadUI();
+                            } else if (data.error) {
                                 showResultModal('下载失败', data.error_message || '下载失败');
+                                resetDownloadUI();
                             } else {
-                                showResultModal('下载完成', 'frpc 已成功下载并解压到根目录。');
+                                showResultModal('下载完成', 'frpc 已成功下载并解压到持久化目录。');
+                                resetDownloadUI();
                             }
-                            resetDownloadUI();
                         }
                         break;
                     }
                     case 'service_status':
-                        updateStatusIndicator(data.status);
+                        updateStatusIndicator(data.status, data.pid, data.error_message, buildVersionInfo(data));
                         break;
                 }
             } catch (error) {
@@ -2714,8 +3514,8 @@ async function checkAndDownloadFrpc() {
         }
 
         // 日志窗口显示开始下载信息
-        const logOutput = document.getElementById('logContent');
-        logOutput.textContent = '开始下载 frpc...\n';
+        updateLogContent('开始下载 frpc...');
+        setLogConnectionState('任务输出');
 
         // 请求后端下载接口（异步进行）
         const downloadResponse = await fetch('/download-frpc', {
@@ -2723,9 +3523,9 @@ async function checkAndDownloadFrpc() {
             headers: { 'Content-Type': 'application/json' }
         });
         let downloadResult = await downloadResponse.json();
-        if (downloadResult.status === 'success') {
-            // 成功结果会由 WebSocket 消息处理弹框与重置UI
-            console.log('下载完成: ', downloadResult.message);
+        if (downloadResult.status === 'accepted' || downloadResult.status === 'success') {
+            // 下载过程由 WebSocket 持续推送，这里只记录任务已开始
+            console.log('下载任务已启动: ', downloadResult.message);
         } else {
             // 失败结果也会在 WebSocket 中处理一次，这里兜底
             console.warn('下载失败: ', downloadResult.message);
@@ -2733,8 +3533,7 @@ async function checkAndDownloadFrpc() {
             resetDownloadUI();
         }
     } catch (error) {
-        const logOutput = document.getElementById('logContent');
-        if (logOutput) logOutput.textContent += `下载失败: ${error.message}\n`;
+        appendLogMessage(`下载失败: ${error.message}`);
         showResultModal('下载失败', error.message);
         resetDownloadUI();
     }
@@ -2753,11 +3552,8 @@ function cancelDownload() {
     .then(data => {
         console.log('取消下载响应:', data);
         if (data.status === 'success') {
-            // 立即更新UI状态
-            const logOutput2 = document.getElementById('logContent');
-            logOutput2.textContent += '下载已取消\n';
-            showResultModal('下载已取消', '下载任务已被用户取消');
-            resetDownloadUI();
+            // 等待后端真正结束下载线程后，再由 WebSocket 统一重置 UI
+            appendLogMessage(data.message);
         } else {
             console.error('取消下载失败:', data.message);
             showResultModal('错误', data.message);
@@ -2832,17 +3628,196 @@ function resetDownloadUI() {
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
     document.body.style.paddingRight = '';
-    
+
     console.log('下载 UI 重置完成');
+}
+
+function formatLocalTimestamp(date = new Date()) {
+    return date.toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+}
+
+function setElementText(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+function markStatusMetric(cardId, metricClass) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    card.classList.remove('metric-running', 'metric-offline', 'metric-error');
+    if (metricClass) {
+        card.classList.add(metricClass);
+    }
+}
+
+function setLogConnectionState(text) {
+    setElementText('logConnectionBadge', text);
+    setElementText('statusLogMode', text);
+
+    const hintMap = {
+        '等待连接': '日志链路待建立',
+        '正在连接': '日志链路协商中',
+        '实时连接': '实时订阅在线',
+        '手动刷新': '按需拉取中',
+        '任务输出': '任务输出流',
+        '监听暂停': '轮询已暂停',
+        '连接中断': '链路重试中',
+        '连接异常': 'WebSocket 异常',
+        '连接失败': '日志链路不可用',
+        '读取失败': '日志接口异常'
+    };
+    setElementText('statusLogHint', hintMap[text] || '日志链路状态');
+
+    if (['实时连接', '任务输出', '手动刷新'].includes(text)) {
+        markStatusMetric('statusLogCard', 'metric-running');
+    } else if (['连接异常', '连接失败', '读取失败', '连接中断'].includes(text)) {
+        markStatusMetric('statusLogCard', 'metric-error');
+    } else {
+        markStatusMetric('statusLogCard', 'metric-offline');
+    }
+}
+
+function refreshStatusTimestamp(text = formatLocalTimestamp()) {
+    setElementText('statusLastUpdate', text);
+    setElementText('logUpdatedAt', text);
+}
+
+function updateLogStats(content) {
+    const normalized = (content || '').trim();
+    const lineCount = normalized ? normalized.split(/\r?\n/).length : 0;
+    setElementText('logLineCount', `${lineCount} 行`);
+    markStatusMetric('statusLogCard', lineCount > 0 ? 'metric-running' : 'metric-offline');
+}
+
+function updateLogContent(content, options = {}) {
+    const logOutput = document.getElementById('logContent');
+    if (!logOutput) return;
+
+    const nextContent = content && content.length ? content : '暂无日志';
+    logOutput.textContent = nextContent;
+    logOutput.classList.toggle('is-empty', nextContent === '暂无日志' || nextContent === '正在加载日志...');
+
+    if (options.scroll !== false) {
+        logOutput.scrollTop = logOutput.scrollHeight;
+    }
+
+    updateLogStats(nextContent === '暂无日志' ? '' : nextContent);
+    refreshStatusTimestamp();
+}
+
+function appendLogMessage(message) {
+    if (!message) return;
+
+    const logOutput = document.getElementById('logContent');
+    if (!logOutput) return;
+
+    const previous = logOutput.textContent;
+    const base = !previous || previous === '暂无日志' || previous === '正在加载日志...' ? '' : previous.trimEnd();
+    const nextContent = `${base}${base ? '\n' : ''}${message}`;
+    updateLogContent(nextContent);
+}
+
+function buildVersionInfo(payload = {}) {
+    return {
+        frpcVersion: payload.frpc_version || payload.frpcVersion || '待检测',
+        frpcVersionHint: payload.frpc_version_hint || payload.frpcVersionHint || '等待状态同步'
+    };
+}
+
+function buildInlineVersionHint(baseText, versionInfo = buildVersionInfo()) {
+    const frpcVersion = versionInfo.frpcVersion || '';
+    if (!frpcVersion || frpcVersion === '待检测' || frpcVersion === '未知' || frpcVersion === '未安装') {
+        return baseText;
+    }
+    return `${baseText}，版本 ${frpcVersion}`;
+}
+
+function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = buildVersionInfo()) {
+    const indicator = document.getElementById('statusIndicator');
+    if (!indicator) return;
+
+    const dot = indicator.querySelector('.status-dot');
+    const text = indicator.querySelector('.status-text');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const restartBtn = document.getElementById('restartBtn');
+
+    indicator.classList.remove('online', 'offline', 'error');
+    dot.classList.remove('online', 'offline', 'error');
+
+    let badgeClass = 'offline';
+    let badgeText = 'FRPC 状态';
+    let stateValue = '等待检测';
+    let stateHint = '实例状态摘要';
+    let pidValue = '--';
+    let pidHint = '主进程标识';
+    let metricClass = 'metric-offline';
+
+    switch (status) {
+        case 'running':
+            badgeClass = 'online';
+            badgeText = 'frpc 运行中';
+            stateValue = '运行中';
+            stateHint = buildInlineVersionHint(pid ? `实例在线 · PID ${pid}` : '实例在线', versionInfo);
+            pidValue = pid ? String(pid) : '--';
+            pidHint = pid ? '当前活跃进程' : '等待实例注册';
+            metricClass = 'metric-running';
+            break;
+        case 'error':
+            badgeClass = 'error';
+            badgeText = 'frpc 异常';
+            stateValue = '异常';
+            stateHint = buildInlineVersionHint(errorMessage || '实例状态异常', versionInfo);
+            pidValue = pid ? String(pid) : '--';
+            pidHint = pid ? '异常实例进程' : '查看运行日志';
+            metricClass = 'metric-error';
+            break;
+        case 'stopped':
+        default:
+            badgeClass = 'offline';
+            badgeText = 'frpc 已停止';
+            stateValue = '已停止';
+            stateHint = buildInlineVersionHint('未检测到活动实例', versionInfo);
+            pidValue = '--';
+            pidHint = '无活动进程';
+            metricClass = 'metric-offline';
+            break;
+    }
+
+    indicator.classList.add(badgeClass);
+    dot.classList.add(badgeClass);
+    text.textContent = badgeText;
+
+    setElementText('statusStateValue', stateValue);
+    setElementText('statusStateHint', stateHint);
+    setElementText('statusPidValue', pidValue);
+    setElementText('statusPidHint', pidHint);
+    refreshStatusTimestamp();
+
+    markStatusMetric('statusStateCard', metricClass);
+    markStatusMetric('statusPidCard', badgeClass === 'running' ? 'metric-running' : badgeClass === 'error' ? 'metric-error' : 'metric-offline');
+    markStatusMetric('statusSyncCard', metricClass);
+
+    if (startBtn) startBtn.disabled = (status === 'running');
+    if (stopBtn) stopBtn.disabled = (status !== 'running');
+    if (restartBtn) restartBtn.disabled = (status !== 'running');
 }
 
 // 开始日志监听
 async function startLogPolling() {
     stopLogPolling(); // 先清理旧定时器，防止多次叠加
+    setLogConnectionState('正在连接');
     connectWebSocket().then(() => {
         // 立即请求一次日志
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'get_log' }));
+            setLogConnectionState('实时连接');
         }
         // 定时请求
         wsLogTimer = setInterval(() => {
@@ -2852,6 +3827,7 @@ async function startLogPolling() {
         }, 2000);
     }).catch(error => {
         console.warn('启动日志监听失败:', error);
+        setLogConnectionState('连接失败');
         // 避免在切换标签或网络瞬断时打扰用户
     });
 }
@@ -2861,19 +3837,32 @@ function stopLogPolling() {
         clearInterval(wsLogTimer);
         wsLogTimer = null;
     }
+    setLogConnectionState('监听暂停');
     // 保持 WebSocket 连接，避免频繁断开导致报错
 }
 
 // 获取日志
 function fetchLog() {
     if (ws && ws.readyState === WebSocket.OPEN) {
+        setLogConnectionState('手动刷新');
         ws.send(JSON.stringify({ type: 'get_log' }));
+        return;
     }
+
+    setLogConnectionState('正在连接');
+    connectWebSocket().then(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            setLogConnectionState('手动刷新');
+            ws.send(JSON.stringify({ type: 'get_log' }));
+        }
+    }).catch(() => {
+        setLogConnectionState('连接失败');
+    });
 }
 
 // 清空日志
 function clearLog() {
-    document.getElementById('logContent').textContent = '';
+    updateLogContent('');
     if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'clear_log' }));
     }
@@ -2895,11 +3884,11 @@ async function startService() {
         }
         
         const data = await response.json();
-        alert(data.message);
+        showResultModal(data.success ? '启动成功' : '启动失败', data.message);
         updateServiceStatus();
     } catch (error) {
         console.error('启动服务失败:', error);
-        alert('启动服务失败: ' + error.message);
+        showResultModal('启动服务失败', '启动服务失败: ' + error.message);
     }
 }
 
@@ -2919,11 +3908,11 @@ async function stopService() {
         }
         
         const data = await response.json();
-        alert(data.message);
+        showResultModal(data.success ? '停止成功' : '停止失败', data.message);
         updateServiceStatus();
     } catch (error) {
         console.error('停止服务失败:', error);
-        alert('停止服务失败: ' + error.message);
+        showResultModal('停止服务失败', '停止服务失败: ' + error.message);
     }
 }
 
@@ -2943,11 +3932,11 @@ async function restartService() {
         }
         
         const data = await response.json();
-        alert(data.message);
+        showResultModal(data.success ? '重启成功' : '重启失败', data.message);
         updateServiceStatus();
     } catch (error) {
         console.error('重启服务失败:', error);
-        alert('重启服务失败: ' + error.message);
+        showResultModal('重启服务失败', '重启服务失败: ' + error.message);
     }
 }
 
@@ -2959,29 +3948,10 @@ async function updateServiceStatus() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        const statusBadge = document.getElementById('statusBadge');
-        var startBtn = document.getElementById('startBtn');
-        var stopBtn = document.getElementById('stopBtn');
-        var restartBtn = document.getElementById('restartBtn');
-        if (statusBadge) {
-            if (data.status === 'running') {
-                statusBadge.className = 'badge bg-success';
-                statusBadge.textContent = `运行中 (PID: ${data.pid})`;
-            } else {
-                statusBadge.className = 'badge bg-danger';
-                statusBadge.textContent = '已停止';
-            }
-        }
-        if (startBtn) startBtn.disabled = (data.status === 'running');
-        if (stopBtn) stopBtn.disabled = (data.status !== 'running');
-        if (restartBtn) restartBtn.disabled = (data.status !== 'running');
+        applyServiceStatusState(data.status, data.pid, data.error_message || '', buildVersionInfo(data));
     } catch (error) {
         console.error('获取服务状态失败:', error);
-        const statusBadge = document.getElementById('statusBadge');
-        if (statusBadge) {
-            statusBadge.className = 'badge bg-secondary';
-            statusBadge.textContent = '状态获取失败';
-        }
+        applyServiceStatusState('error', null, '状态获取失败，请稍后重试');
     }
 }
 
@@ -2994,42 +3964,16 @@ async function updateLogs() {
         }
         
         const data = await response.json();
-        const logOutput = document.getElementById('logContent');
-        if (logOutput) {
-            logOutput.textContent = data.logs.join('');
-            logOutput.scrollTop = logOutput.scrollHeight;
-        }
+        updateLogContent(data.logs.join('\n'));
     } catch (error) {
         console.error('获取日志失败:', error);
+        setLogConnectionState('读取失败');
     }
 }
 
 // 更新状态指示器
-function updateStatusIndicator(status) {
-    const indicator = document.getElementById('statusIndicator');
-    const dot = indicator.querySelector('.status-dot');
-    const text = indicator.querySelector('.status-text');
-    
-    // 移除所有状态类
-    dot.classList.remove('online', 'offline', 'error');
-    
-    switch(status) {
-        case 'running':
-            dot.classList.add('online');
-            text.textContent = 'frpc 运行中';
-            break;
-        case 'stopped':
-            dot.classList.add('offline');
-            text.textContent = 'frpc 已停止';
-            break;
-        case 'error':
-            dot.classList.add('error');
-            text.textContent = 'frpc 错误';
-            break;
-        default:
-            dot.classList.add('offline');
-            text.textContent = 'frpc 状态';
-    }
+function updateStatusIndicator(status, pid, errorMessage, versionInfo = buildVersionInfo()) {
+    applyServiceStatusState(status, pid, errorMessage || '', versionInfo);
 }
 
 // 1. 新增WebSocket方式监听frpc状态
@@ -3076,9 +4020,65 @@ function enableHeaderDragScroll(headerSelector, scrollContainerSelector) {
     });
 }
 
+function initConfigTabs() {
+    const tabsContainer = document.querySelector('.tabs-shell');
+    const tabList = document.getElementById('configTabs');
+    const hoverHighlight = document.getElementById('configTabsHover');
+    const activeIndicator = document.getElementById('configTabsActive');
+
+    if (!tabsContainer || !tabList || !hoverHighlight || !activeIndicator) return;
+
+    const tabButtons = Array.from(tabList.querySelectorAll('.nav-link'));
+
+    function moveIndicator(target, indicator, alwaysVisible = true) {
+        if (!target || !indicator) return;
+        const containerRect = tabsContainer.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const left = targetRect.left - containerRect.left + tabsContainer.scrollLeft;
+        indicator.style.left = `${left}px`;
+        indicator.style.width = `${target.offsetWidth}px`;
+        indicator.style.opacity = alwaysVisible ? '1' : indicator.style.opacity;
+    }
+
+    function syncActiveIndicator() {
+        const activeButton = tabList.querySelector('.nav-link.active');
+        if (activeButton) {
+            moveIndicator(activeButton, activeIndicator);
+        }
+    }
+
+    tabButtons.forEach((button) => {
+        button.addEventListener('mouseenter', () => {
+            moveIndicator(button, hoverHighlight);
+            hoverHighlight.style.opacity = '1';
+        });
+
+        button.addEventListener('mouseleave', () => {
+            hoverHighlight.style.opacity = '0';
+        });
+
+        button.addEventListener('shown.bs.tab', () => {
+            syncActiveIndicator();
+        });
+    });
+
+    tabsContainer.addEventListener('mouseleave', () => {
+        hoverHighlight.style.opacity = '0';
+    });
+
+    window.addEventListener('resize', syncActiveIndicator);
+    tabsContainer.addEventListener('scroll', syncActiveIndicator, { passive: true });
+    requestAnimationFrame(syncActiveIndicator);
+}
+
 // 页面加载时启动ws监听
 document.addEventListener('DOMContentLoaded', function() {
     loadConfig();
+    initConfigTabs();
+    applyServiceStatusState('stopped', null, '', buildVersionInfo());
+    setLogConnectionState('等待连接');
+    updateLogContent('正在加载日志...', { scroll: false });
+    updateServiceStatus();
 
     // 启用服务器配置、客户端配置的表头拖拽滚动（滚动容器为 #configTabsContent）
     enableHeaderDragScroll('#server .modern-table thead', '#configTabsContent');
@@ -3107,13 +4107,14 @@ function openConfigManager() {
 
 function readConfigFile() {
     fetch('/config.json').then(r => r.json()).then(data => {
+        const proxies = Array.isArray(data.proxies) ? data.proxies : [];
         // 创建新的配置对象，不包含 enabled 字段
         const displayConfig = {
             serverAddr: data.serverAddr,
             serverPort: data.serverPort,
             webServer: data.webServer,
             auth: data.auth,
-            proxies: data.proxies.map(proxy => {
+            proxies: proxies.map(proxy => {
                 const { enabled, ...rest } = proxy;
                 return rest;
             })
@@ -3128,13 +4129,14 @@ function readConfigFile() {
 
 function exportConfigFile() {
     fetch('/config.json').then(r => r.json()).then(data => {
+        const proxies = Array.isArray(data.proxies) ? data.proxies : [];
         // 创建新的配置对象，不包含 enabled 字段
         const exportConfig = {
             serverAddr: data.serverAddr,
             serverPort: data.serverPort,
             webServer: data.webServer,
             auth: data.auth,
-            proxies: data.proxies.map(proxy => {
+            proxies: proxies.map(proxy => {
                 const { enabled, ...rest } = proxy;
                 return rest;
             })
@@ -3175,63 +4177,27 @@ function saveConfigFile() {
     fetch('/config.json').then(r => {
         if (r.ok) {
             showConfirmModal('确认替换', 'config.json 已存在，是否替换？', () => {
-                doSaveConfig(json);
+                void executeConfigFileSave(json);
             });
         } else {
-            doSaveConfig(json);
+            void executeConfigFileSave(json);
         }
     }).catch(() => {
-        doSaveConfig(json);
+        void executeConfigFileSave(json);
     });
 }
 
-function doSaveConfig(json) {
-    fetch('/save-config', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(json)
-    }).then(r => r.json()).then(data => {
-        if (data.status === 'success') {
-            // 如果有启用的配置，保存到 frpc.json
-            const enabledProxies = json.proxies.filter(proxy => proxy.enabled !== false);
-            if (enabledProxies.length > 0) {
-                const frpcConfig = {
-                    ...json,
-                    proxies: enabledProxies.map(proxy => {
-                        const { enabled, ...rest } = proxy;
-                        return rest;
-                    })
-                };
-                
-                fetch('/save', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(frpcConfig)
-                }).then(() => {
-                    alert('保存成功！');
-                    loadConfig();
-                }).catch(() => {
-                    alert('保存成功，但 frpc.json 保存失败！');
-                    loadConfig();
-                });
-            } else {
-                // 如果没有启用的配置，删除 frpc.json
-                fetch('/delete-frpc-config', {
-                    method: 'POST'
-                }).then(() => {
-                    alert('保存成功！');
-                    loadConfig();
-                }).catch(() => {
-                    alert('保存成功，但删除 frpc.json 失败！');
-                    loadConfig();
-                });
+async function executeConfigFileSave(json) {
+    try {
+        const result = await persistConfigArtifacts(json, {
+            onSuccess: async () => {
+                await loadConfig();
             }
-        } else {
-            alert('保存失败：' + (data.message || '未知错误'));
-        }
-    }).catch(() => {
-        alert('保存失败！');
-    });
+        });
+        showResultModal('保存成功', result.message);
+    } catch (error) {
+        showResultModal('保存失败', '保存配置失败：' + error.message);
+    }
 }
 
 // 检查会话状态
@@ -3279,17 +4245,11 @@ async function handleApiResponse(response) {
 async function updateStatus() {
     try {
         if (!await checkSession()) return;
-        
-        const response = await fetch('/frpc/status');
-        const data = await handleApiResponse(response);
-        
-        const statusBadge = document.getElementById('statusBadge');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const restartBtn = document.getElementById('restartBtn');
+
+        await updateServiceStatus();
     } catch (error) {
         console.error('更新服务状态失败:', error);
-        alert('更新服务状态失败: ' + error.message);
+        showResultModal('状态刷新失败', '更新服务状态失败: ' + error.message);
     }
 }
 

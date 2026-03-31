@@ -1,181 +1,192 @@
-# frpc-web（FRPC Web 管理界面）
+# frpc-web
 
-一个基于 Flask 的轻量级 FRPC（fatedier/frp 客户端）可视化管理与监控面板，支持一键容器化部署、登录认证、实时状态与日志、健康检查，以及对 frpc 配置文件的在线管理。当前版本强调“单文件配置”：仅需修改根目录下的 `.env` 即可完成部署与运行。
+一个基于 Flask 的 FRPC Web 管理面板，用来完成 `frpc` 配置维护、服务启停、运行状态查看、日志追踪和一键下载。仓库现在已经按公开上传场景做过整理：示例配置已脱敏、运行时目录已排除、README 使用的是本地生成的公开演示截图。
 
-## 功能特点
+## 页面预览
 
-- 登录认证与安全
-  - 默认管理员账号由环境变量注入（首次启动自动创建）
-  - 首次登录强制修改密码（提升安全性）
-  - 会话/Remember Cookie 安全选项可通过环境变量控制
-- FRPC 管理与配置
-  - 在线保存/读取 `frpc.json` 配置（同时兼容 `config.json`，自动补齐 `enabled` 字段）
-  - 自动检测根目录存在 `frpc` 与 `frpc.json` 时尝试启动 FRPC
-  - 提供“下载 frpc（linux_amd64）”能力并显示进度
-- 运行状态与日志
-  - WebSocket 实时推送 FRPC 状态、下载进度与日志
-  - 应用日志与 FRPC 日志分离存储、滚动切分
-- 健康检查与自愈
-  - 内置 `/health` 健康检查端点（Docker Compose 已集成）
-  - 网络恢复后自动尝试重启 FRPC
-- 容器友好
-  - Docker 镜像与 Compose 一键部署
-  - 数据与日志目录持久化挂载
+### 控制台首页
 
-## 系统要求
+![控制台首页](docs/images/dashboard-demo.png)
 
-- 推荐：Docker 24+ 与 Docker Compose 插件
-- 架构：容器镜像基于 linux/amd64（内置“下载 frpc”亦指向 linux_amd64 发行包）。其他架构请手动放置对应 `frpc` 可执行文件。
-- 手动运行（非容器）：Python 3.10+；建议在 Linux/WSL 环境运行（网络检查使用 `ping -c` 语法，Windows 原生命令参数不同）。
+### 服务状态页
 
-## 界面截图
-<img width="2560" height="1219" alt="服务器配置" src="https://github.com/user-attachments/assets/5cd498d8-03f7-4f58-b693-417b434ad1a3" />
-<img width="2545" height="1219" alt="客户端配置" src="https://github.com/user-attachments/assets/bf096c12-9d1b-49d1-8cc9-7d8c2a65cf82" />
-<img width="2560" height="1219" alt="服务状态" src="https://github.com/user-attachments/assets/25811636-5aad-49d5-82f1-bb08ce8702de" />
+![服务状态页](docs/images/status-demo.png)
 
-## 部署（推荐：Docker Compose）
+## 功能概览
 
-1) 获取代码
+- 登录认证与首次登录改密
+- 在线维护 `config.json` / `frpc.json`
+- 支持下载 `linux_amd64` 版本 `frpc`
+- 提供 FRPC 启动、停止、重启和日志查看能力
+- 支持运行状态展示、版本信息展示与健康检查
+- 支持 Docker Compose 一键部署
+- 提供基础自动化测试与 GitHub Actions 工作流
+
+## 仓库结构
+
+```text
+frpc-web/
+├─ app/                    Flask 主应用
+│  ├─ auth/                登录与密码修改
+│  ├─ main/                页面路由与接口
+│  ├─ static/login/        登录页静态资源（发布内容）
+│  ├─ templates/           Flask 模板
+│  └─ utils/               frpc 管理、网络检查、校验工具
+├─ docs/images/            README 使用的截图资源
+├─ migrations/             Alembic 数据库迁移
+├─ tests/                  自动化测试
+├─ .env.example            公开示例环境变量
+├─ config.json             公开示例配置
+├─ docker-compose.yml      推荐部署方式
+└─ run.py                  启动入口
+```
+
+## 快速开始
+
+### 1. 获取代码
+
 ```bash
 git clone https://github.com/xirankj/frpc-web.git
 cd frpc-web
 ```
 
-2) 准备配置（只需编辑一个文件：.env）
-- 如仓库中已有 `.env`，直接编辑即可；否则可从示例复制：
+### 2. 准备环境变量
+
 ```bash
 cp .env.example .env
 ```
-- 最小可用配置（务必修改默认口令与密钥）：
+
+最少需要关注这些配置：
+
 ```ini
 WEB_PORT=8001
 DEFAULT_USERNAME=admin
-DEFAULT_PASSWORD=admin123
+DEFAULT_PASSWORD=ChangeMe_123!
 SECRET_KEY=replace-with-a-random-secret
 DATABASE_URL=sqlite:////app/data/frpc.db
 LOG_LEVEL=INFO
 LOG_FILE=/var/log/frpc-web/app.log
 FRPC_LOG_DIR=/var/log/frpc-web
 TZ=Asia/Shanghai
-NETWORK_CHECK_INTERVAL=1800
-NETWORK_CHECK_HOSTS=8.8.8.8,114.114.114.114
-NETWORK_CHECK_TIMEOUT=5
-SESSION_COOKIE_SECURE=False
-SESSION_COOKIE_HTTPONLY=True
-REMEMBER_COOKIE_SECURE=False
-REMEMBER_COOKIE_HTTPONLY=True
 ```
 
-3) 启动服务
+如果你希望在“服务状态”里读取远端 `frps` 版本，可以额外配置：
+
+```ini
+FRPS_VERSION_URL=
+FRPS_VERSION_USERNAME=
+FRPS_VERSION_PASSWORD=
+```
+
+### 3. 使用 Docker Compose 启动
+
 ```bash
 docker compose up -d
 ```
-首次启动会初始化数据库并创建默认管理员（来源于 `.env`）。
 
-4) 访问与登录
-- 访问地址：http://<服务器IP>:WEB_PORT（默认 8001）
-- 使用 `.env` 中的默认账号登录，首次登录会强制修改密码。
+首次启动会自动：
 
-5) 准备 frpc 可执行文件与配置
-- 方法A（容器内一键下载，推荐）：在 Web 界面发起“下载 frpc”，系统会自动下载最新 linux_amd64 版本并解压到容器工作目录。
-- 方法B（手动放置）：将 `frpc` 与 `frpc.json` 放在容器工作目录（/app）。若希望从宿主机挂载，可在 docker-compose.yml 的 `volumes` 中按需添加：
-```yaml
-services:
-  frpc-web:
-    volumes:
-      - ./frpc:/app/frpc
-      - ./frpc.json:/app/frpc.json
+- 执行数据库迁移
+- 创建默认管理员账号
+- 初始化数据目录与日志目录
+- 在检测到 `frpc` 与 `frpc.json` 时尝试自动拉起 FRPC
+
+### 4. 访问系统
+
+默认地址：
+
+```text
+http://<你的服务器IP>:8001
 ```
-当根目录同时存在 `frpc` 与 `frpc.json` 时，程序会在启动后自动尝试运行 FRPC。
 
-6) 在线保存配置与查看日志
-- Web 界面可在线编辑并保存 `frpc.json`（内部自动过滤/补齐必要字段）。
-- WebSocket 实时输出 FRPC 日志与运行状态，支持清空日志。
+首次登录后系统会要求修改密码。
 
-## 另一种方式：自行构建镜像并运行
+## 示例配置
 
-1) 构建镜像
+仓库根目录的 `config.json` 已替换为公开示例，可直接作为参考模板：
+
+```json
+{
+  "serverAddr": "frps.example.com",
+  "serverPort": 7000,
+  "auth": {
+    "method": "token",
+    "token": "replace-with-your-token"
+  },
+  "proxies": [
+    {
+      "enabled": true,
+      "name": "frpc-web",
+      "type": "tcp",
+      "localIP": "127.0.0.1",
+      "localPort": 8001,
+      "remotePort": 8080
+    },
+    {
+      "enabled": true,
+      "name": "demo-site",
+      "type": "http",
+      "localIP": "127.0.0.1",
+      "localPort": 3000,
+      "customDomains": [
+        "demo.example.com"
+      ]
+    }
+  ]
+}
+```
+
+## 本地运行
+
+如果你不使用 Docker，也可以直接运行：
+
 ```bash
-docker build -t frpc-web:local .
+python -m venv .venv
+. .venv/bin/activate  # Windows 请改用 .venv\Scripts\activate
+pip install -r requirements.txt
+python run.py
 ```
 
-2) 运行容器（使用 `.env` 注入配置）
+本地运行时，容器内路径会自动映射到项目目录：
+
+- `/app/data` -> `./data`
+- `/var/log/frpc-web` -> `./logs`
+
+## 页面与发布资源说明
+
+- 登录页发布资源位于 `app/static/login/`，这是服务实际使用的前端静态文件
+- 如果你本地还有独立的前端工作区，例如 `login/`，当前仓库默认不会把它一起上传
+- README 截图资源位于 `docs/images/`
+- README 生成时使用的临时演示目录位于 `docs/.demo-runtime/`，已加入忽略规则，不会进入仓库
+
+## 测试与持续集成
+
+运行测试：
+
 ```bash
-docker run -d \
-  --name frpc-web \
-  --env-file ./.env \
-  -p 8001:8001 \
-  -v ./data:/app/data \
-  -v ./logs:/var/log/frpc-web \
-  frpc-web:local
+python -m unittest discover -s tests -v
 ```
-如需自定义对外端口，将 `-p 8001:8001` 的左侧改成你的端口，并确保 `.env` 中的 `WEB_PORT` 对应更新（Compose 场景会自动插值，docker run 则直接映射）。
 
-## 环境变量一览
+仓库已经包含 GitHub Actions 工作流，推送或提交 PR 时会自动执行测试。
 
-- Core
-  - `WEB_PORT`：对外端口（默认 8001）
-  - `DEFAULT_USERNAME` / `DEFAULT_PASSWORD`：默认管理员账号与密码（首次启动创建）
-  - `SECRET_KEY`：Flask 密钥，生产环境务必改为高强度随机值
-  - `DATABASE_URL`：数据库连接，容器内默认 `sqlite:////app/data/frpc.db`
-- 日志
-  - `LOG_LEVEL`、`LOG_FORMAT`、`LOG_FILE`：应用日志级别/格式/路径
-  - `FRPC_LOG_DIR`：FRPC 日志目录（默认与应用日志目录一致），日志文件名为 `frpc.log`
-- 网络健康检查
-  - `NETWORK_CHECK_INTERVAL`（秒，默认 1800）
-  - `NETWORK_CHECK_HOSTS`（逗号分隔的主机列表）
-  - `NETWORK_CHECK_TIMEOUT`（秒）
-- 会话安全
-  - `SESSION_COOKIE_SECURE`、`SESSION_COOKIE_HTTPONLY`
-  - `REMEMBER_COOKIE_SECURE`、`REMEMBER_COOKIE_HTTPONLY`
+## 上传前整理说明
 
-生产环境建议：开启 `SESSION_COOKIE_SECURE=True`，并在反向代理层启用 HTTPS。
+这次仓库整理已经做了这些事情：
 
-## 目录与持久化
+- `.env` 继续保留在忽略规则中，不会被提交
+- `data/`、`logs/`、`backup/`、`docs/.demo-runtime/` 等本地运行目录已排除
+- 根目录 `config.json` 已改成公开占位示例
+- `.env.example` 已改成公开安全的默认示例
+- README 已移除个人邮箱类信息，改为公开可展示内容
 
-- 数据库：`/app/data/frpc.db`（宿主机挂载路径 `./data`）
-- 应用与 FRPC 日志目录：`/var/log/frpc-web`（宿主机挂载路径 `./logs`，FRPC 日志文件为 `frpc.log`）
+建议你上传前再确认一次：
 
-## 健康检查
+```bash
+git status --short
+```
 
-- HTTP GET `/health` 返回 `{ "status": "ok" }`（无需登录）
-- Docker Compose 已内置基于该端点的 `healthcheck`
-
-## 已知限制
-
-- “下载 frpc”当前仅覆盖 linux_amd64 发行包；其他平台/架构请自行放置对应的 `frpc` 可执行文件并（可选）通过卷挂载到容器 `/app`。
-- 若在非容器的 Windows 环境手动运行，网络检查使用的 `ping` 参数与 Linux 不同，可能导致网络检查功能不可用。
+如果你希望把前端源码工作区也并入当前仓库，请先处理 `login/` 目录里的独立 Git 元数据，再决定是否纳入版本管理。
 
 ## 许可证
 
-本项目采用 MIT 许可证。
-
-```
-MIT License
-
-Copyright (c) 2025 xirankj
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-## 联系方式
-
-- 项目维护者：[xirankj]
-- 邮箱：[xirankj@163.com]
-- 项目链接：[https://github.com/xirankj/frpc-web]
+本项目采用 MIT 许可证，详见 [LICENSE](LICENSE)。
