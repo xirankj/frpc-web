@@ -39,7 +39,7 @@ backup/
 *.log
 .env
 docs/.demo-runtime/
-login/
+/login/
 
 # Docker
 .docker/
