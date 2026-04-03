@@ -1,6 +1,6 @@
 # frpc-web
 
-一个基于 Flask 的 FRPC Web 管理面板，用来完成 `frpc` 配置维护、服务启停、运行状态查看、日志追踪和一键下载。仓库现在已经按公开上传场景做过整理：示例配置已脱敏、运行时目录已排除、README 使用的是本地生成的公开演示截图。
+一个基于 Flask 的 FRPC Web 管理面板，用来完成 `frpc` 配置维护、服务启停、运行状态查看、日志追踪和一键下载。
 
 ## 页面预览
 
@@ -152,40 +152,6 @@ python run.py
 - `/app/data` -> `./data`
 - `/var/log/frpc-web` -> `./logs`
 
-## 页面与发布资源说明
-
-- 登录页发布资源位于 `app/static/login/`，这是服务实际使用的前端静态文件
-- 如果你本地还有独立的前端工作区，例如 `login/`，当前仓库默认不会把它一起上传
-- README 截图资源位于 `docs/images/`
-- README 生成时使用的临时演示目录位于 `docs/.demo-runtime/`，已加入忽略规则，不会进入仓库
-
-## 测试与持续集成
-
-运行测试：
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-仓库已经包含 GitHub Actions 工作流，推送或提交 PR 时会自动执行测试。
-
-## 上传前整理说明
-
-这次仓库整理已经做了这些事情：
-
-- `.env` 继续保留在忽略规则中，不会被提交
-- `data/`、`logs/`、`backup/`、`docs/.demo-runtime/` 等本地运行目录已排除
-- 根目录 `config.json` 已改成公开占位示例
-- `.env.example` 已改成公开安全的默认示例
-- README 已移除个人邮箱类信息，改为公开可展示内容
-
-建议你上传前再确认一次：
-
-```bash
-git status --short
-```
-
-如果你希望把前端源码工作区也并入当前仓库，请先处理 `login/` 目录里的独立 Git 元数据，再决定是否纳入版本管理。
 
 ## 许可证
 
