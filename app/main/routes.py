@@ -72,6 +72,38 @@ def get_download_snapshot():
     return runtime_state.download_manager.snapshot()
 
 
+def get_restart_snapshot():
+    """读取当前重启任务状态快照。"""
+    return runtime_state.restart_manager.snapshot()
+
+
+def run_restart_in_background():
+    """在后台执行 frpc 重启并持续更新任务状态。"""
+    restart_manager = runtime_state.restart_manager
+    try:
+        restart_manager.update('stopping', '正在停止 frpc 服务...', 30)
+        stop_success, stop_message = frpc_manager.stop()
+        if not stop_success and stop_message != 'frpc 服务未运行':
+            restart_manager.complete_error(f'停止服务失败：{stop_message}')
+            return
+
+        restart_manager.update('starting', '正在启动 frpc 服务...', 72)
+        start_success, start_message = frpc_manager.start()
+        if not start_success:
+            restart_manager.complete_error(f'重启失败：{start_message}')
+            return
+
+        status = frpc_manager.get_status()
+        pid = status.get('pid')
+        if pid:
+            restart_manager.complete_success(f'frpc 服务已重启，PID: {pid}')
+        else:
+            restart_manager.complete_success(start_message)
+    except Exception as e:
+        logger.exception(f'后台重启 frpc 服务失败: {str(e)}')
+        restart_manager.complete_error('重启失败，请查看应用日志')
+
+
 def cleanup_download_artifacts(*paths):
     """清理下载过程中产生的临时文件和目录。"""
     for path in paths:
@@ -609,13 +641,39 @@ def frpc_stop():
 def frpc_restart():
     """重启 frpc 服务"""
     try:
-        success, message = frpc_manager.restart()
+        restart_manager = runtime_state.restart_manager
+        if not restart_manager.can_start():
+            snapshot = get_restart_snapshot()
+            return jsonify({
+                'success': False,
+                'message': snapshot.get('message') or '已有重启任务正在进行',
+                'restart': snapshot
+            }), 409
+
+        snapshot = restart_manager.start(run_restart_in_background, initial_delay=1.0)
         return jsonify({
-            'success': success,
-            'message': message
-        })
+            'success': True,
+            'accepted': True,
+            'message': '已提交重启请求，正在后台执行',
+            'restart': snapshot
+        }), 202
     except Exception as e:
         return log_internal_error('重启 frpc 服务失败', e, '重启服务失败，请稍后重试')
+
+
+@bp.route('/frpc/restart-status')
+@login_required
+def frpc_restart_status():
+    """获取 frpc 重启任务状态。"""
+    try:
+        snapshot = get_restart_snapshot()
+        service_status = frpc_manager.get_status()
+        return jsonify({
+            **snapshot,
+            'service_status': service_status
+        })
+    except Exception as e:
+        return log_internal_error('获取 frpc 重启状态失败', e, '获取重启状态失败，请稍后重试')
 
 @bp.route('/frpc/logs')
 @login_required

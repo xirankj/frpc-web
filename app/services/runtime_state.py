@@ -2,6 +2,7 @@ import json
 import logging
 import queue
 import threading
+import time
 from dataclasses import asdict, dataclass
 
 
@@ -19,6 +20,27 @@ class DownloadState:
     cancelled: bool = False
     error_message: str = ""
     archive_path: str = ""
+
+    def snapshot(self) -> dict:
+        """返回可序列化的状态快照。"""
+        return asdict(self)
+
+
+@dataclass
+class RestartState:
+    """重启任务的统一状态。"""
+
+    is_restarting: bool = False
+    completed: bool = False
+    success: bool | None = None
+    stage: str = "idle"
+    progress: int = 0
+    message: str = ""
+    error_message: str = ""
+    started_at: float = 0.0
+    updated_at: float = 0.0
+    completed_at: float = 0.0
+    attempt_id: int = 0
 
     def snapshot(self) -> dict:
         """返回可序列化的状态快照。"""
@@ -113,6 +135,112 @@ class DownloadManager:
             self._state.archive_path = ""
 
 
+class RestartManager:
+    """统一管理 frpc 重启任务状态。"""
+
+    COMPLETED_STATE_TTL = 15
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._thread = None
+        self._attempt_id = 0
+        self._state = RestartState()
+
+    def snapshot(self) -> dict:
+        """获取当前重启状态快照。"""
+        with self._lock:
+            if (
+                self._state.completed
+                and self._state.completed_at
+                and (time.time() - self._state.completed_at) > self.COMPLETED_STATE_TTL
+            ):
+                self._state = RestartState()
+            return self._state.snapshot()
+
+    def can_start(self) -> bool:
+        """检查是否允许开始新的重启任务。"""
+        with self._lock:
+            return not (self._thread and self._thread.is_alive())
+
+    def start(self, target, initial_delay: float = 0.8) -> dict:
+        """登记并启动后台重启线程。"""
+        with self._lock:
+            if self._thread and self._thread.is_alive():
+                raise RuntimeError("已有重启任务正在进行")
+
+            self._attempt_id += 1
+            now = time.time()
+            self._state = RestartState(
+                is_restarting=True,
+                completed=False,
+                success=None,
+                stage="pending",
+                progress=8,
+                message="已收到重启请求，准备开始执行",
+                error_message="",
+                started_at=now,
+                updated_at=now,
+                completed_at=0.0,
+                attempt_id=self._attempt_id,
+            )
+
+            def runner():
+                try:
+                    if initial_delay > 0:
+                        time.sleep(initial_delay)
+                    target()
+                finally:
+                    with self._lock:
+                        self._thread = None
+
+            self._thread = threading.Thread(target=runner, daemon=True)
+            self._thread.start()
+            return self._state.snapshot()
+
+    def update(
+        self,
+        stage: str,
+        message: str,
+        progress: int | None = None,
+        *,
+        success: bool | None = None,
+        error_message: str = "",
+    ) -> dict:
+        """更新重启任务状态。"""
+        with self._lock:
+            now = time.time()
+            self._state.stage = stage
+            self._state.message = message
+            self._state.updated_at = now
+            if progress is not None:
+                self._state.progress = max(0, min(100, int(progress)))
+
+            if success is None:
+                self._state.is_restarting = True
+                self._state.completed = False
+                self._state.success = None
+                self._state.error_message = ""
+                self._state.completed_at = 0.0
+            else:
+                self._state.is_restarting = False
+                self._state.completed = True
+                self._state.success = success
+                self._state.error_message = error_message if not success else ""
+                self._state.completed_at = now
+                if progress is None:
+                    self._state.progress = 100
+
+            return self._state.snapshot()
+
+    def complete_success(self, message: str) -> dict:
+        """将重启任务标记为成功完成。"""
+        return self.update("completed", message, 100, success=True)
+
+    def complete_error(self, message: str) -> dict:
+        """将重启任务标记为失败完成。"""
+        return self.update("failed", message, 100, success=False, error_message=message)
+
+
 class DownloadCancelledError(Exception):
     """用于中断下载线程的取消异常。"""
 
@@ -155,6 +283,7 @@ class RuntimeStateService:
 
     def __init__(self):
         self.download_manager = DownloadManager()
+        self.restart_manager = RestartManager()
         self.websocket_hub = WebSocketHub()
         self.log_queue = queue.Queue()
         self._broadcast_thread = None

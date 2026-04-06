@@ -489,6 +489,8 @@
             --type-https-text: #b45309;
             --metric-running-bg: rgba(15, 118, 110, 0.08);
             --metric-running-border: rgba(16, 185, 129, 0.22);
+            --metric-warning-bg: rgba(245, 158, 11, 0.1);
+            --metric-warning-border: rgba(245, 158, 11, 0.22);
             --metric-offline-bg: rgba(148, 163, 184, 0.08);
             --metric-offline-border: rgba(148, 163, 184, 0.2);
             --metric-error-bg: rgba(239, 68, 68, 0.08);
@@ -534,6 +536,8 @@
                 --type-https-text: #fde68a;
                 --metric-running-bg: rgba(16, 185, 129, 0.1);
                 --metric-running-border: rgba(52, 211, 153, 0.22);
+                --metric-warning-bg: rgba(251, 191, 36, 0.14);
+                --metric-warning-border: rgba(251, 191, 36, 0.24);
                 --metric-offline-bg: rgba(148, 163, 184, 0.1);
                 --metric-offline-border: rgba(148, 163, 184, 0.18);
                 --metric-error-bg: rgba(248, 113, 113, 0.12);
@@ -879,6 +883,12 @@
             border: 1px solid rgba(239, 68, 68, 0.16);
         }
 
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.12);
+            color: #b45309;
+            border: 1px solid rgba(245, 158, 11, 0.18);
+        }
+
         .status-dot.online {
             background: #10b981;
             box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
@@ -891,6 +901,11 @@
         .status-dot.error {
             background: #ef4444;
             box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12);
+        }
+
+        .status-dot.warning {
+            background: #f59e0b;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
         }
 
         .status-metrics-grid {
@@ -914,6 +929,11 @@
         .status-metric-card.metric-running {
             background: var(--metric-running-bg);
             border-color: var(--metric-running-border);
+        }
+
+        .status-metric-card.metric-warning {
+            background: var(--metric-warning-bg);
+            border-color: var(--metric-warning-border);
         }
 
         .status-metric-card.metric-offline {
@@ -1060,6 +1080,32 @@
 
         .modal-body {
             padding: 24px 26px;
+        }
+
+        .modal-dialog-scrollable .modal-content {
+            max-height: calc(100vh - 64px);
+        }
+
+        .modal-dialog-scrollable .modal-content > form {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            height: 100%;
+        }
+
+        .modal-dialog-scrollable .modal-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+        }
+
+        @supports (height: 100dvh) {
+            .modal-dialog-scrollable .modal-content {
+                max-height: calc(100dvh - 64px);
+            }
         }
 
         .modal-footer {
@@ -1564,6 +1610,19 @@
                 margin: 16px;
                 max-width: calc(100vw - 32px);
             }
+
+            .modal-dialog-scrollable {
+                height: calc(100vh - 32px);
+            }
+
+            .modal-dialog-scrollable .modal-content {
+                max-height: calc(100vh - 32px);
+            }
+
+            .modal-dialog-scrollable .modal-content > form {
+                min-height: 0;
+                height: 100%;
+            }
             
             .modal-content {
                 border-radius: 12px;
@@ -1579,10 +1638,26 @@
             .modal-body {
                 padding: 20px 24px;
             }
+
+            .modal-dialog-scrollable .modal-body {
+                flex: 1 1 auto;
+                min-height: 0;
+                padding-bottom: 28px;
+            }
             
             .modal-footer {
                 padding: 16px 24px 20px;
                 border-top: 1px solid var(--border-color);
+            }
+
+            @supports (height: 100dvh) {
+                .modal-dialog-scrollable {
+                    height: calc(100dvh - 32px);
+                }
+
+                .modal-dialog-scrollable .modal-content {
+                    max-height: calc(100dvh - 32px);
+                }
             }
             
             .form-label {
@@ -1818,6 +1893,18 @@
             margin-top: 8px;
             font-size: 12px;
             color: var(--text-light);
+        }
+
+        .service-progress-container {
+            margin-top: 18px;
+        }
+
+        .service-progress-container .progress {
+            height: 18px;
+        }
+
+        .service-progress-container .progress-text {
+            margin-top: 10px;
         }
         /* 动画效果 */
         @keyframes fadeInUp {
@@ -2094,6 +2181,12 @@
                                         <i class="bi bi-stop-fill"></i>
                                         停止服务
                                     </button>
+                                </div>
+                                <div class="progress-container service-progress-container" id="restartProgressContainer">
+                                    <div class="progress">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" id="restartProgressBar" role="progressbar" style="width: 0%">0%</div>
+                                    </div>
+                                    <div class="progress-text" id="restartProgressText">正在准备重启...</div>
                                 </div>
                             </section>
 
@@ -2477,7 +2570,7 @@
                 <p class="modal-note">归档将写入持久化目录并自动解压。</p>
                 <div class="progress-container" id="downloadProgressContainer">
                     <div class="progress">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" id="downloadProgressBar" role="progressbar" style="width: 0%"></div>
                     </div>
                     <div class="progress-text" id="downloadProgressText"></div>
                 </div>
@@ -2582,6 +2675,17 @@ const RETRY_DELAY = 1000;  // 重试延迟（毫秒）
 let wsLogTimer = null;
 let wsReconnectTimer = null; // WebSocket 重连定时器
 let wsShouldReconnect = true; // 是否允许自动重连
+let latestServiceVersionInfo = buildVersionInfo();
+let restartStatusTimer = null;
+let restartVisualTimer = null;
+let restartHideTimer = null;
+let restartProgressState = {
+    active: false,
+    visualProgress: 0,
+    targetProgress: 0,
+    message: '',
+    lastSnapshot: null
+};
 
 // 添加输入验证函数
 function validateIP(ip) {
@@ -3360,7 +3464,7 @@ function openChangePasswordModal() {
 function confirmDownloadFrpc() {
     // 重置进度 UI
     const progressContainer = document.getElementById('downloadProgressContainer');
-    const progressBar = document.querySelector('.progress-bar');
+    const progressBar = document.getElementById('downloadProgressBar');
     const progressText = document.getElementById('downloadProgressText');
     const startDownloadBtn = document.getElementById('startDownloadBtn');
     const cancelDownloadBtn = document.getElementById('cancelDownloadBtn');
@@ -3447,7 +3551,7 @@ function connectWebSocket() {
                             const m = data.message.match(/下载进度: ([\d.]+)%/);
                             if (m) {
                                 const progress = parseFloat(m[1]);
-                                const progressBar = document.querySelector('.progress-bar');
+                                const progressBar = document.getElementById('downloadProgressBar');
                                 if (progressBar) progressBar.style.width = `${progress}%`;
                                 const progressText = document.getElementById('downloadProgressText');
                                 if (progressText) progressText.textContent = `下载进度: ${progress.toFixed(1)}%`;
@@ -3468,7 +3572,17 @@ function connectWebSocket() {
                         break;
                     }
                     case 'service_status':
-                        updateStatusIndicator(data.status, data.pid, data.error_message, buildVersionInfo(data));
+                        latestServiceVersionInfo = buildVersionInfo(data);
+                        if (restartProgressState.active) {
+                            applyServiceStatusState(
+                                'restarting',
+                                data.pid,
+                                restartProgressState.message || '正在后台重启 frpc 服务...',
+                                latestServiceVersionInfo
+                            );
+                        } else {
+                            updateStatusIndicator(data.status, data.pid, data.error_message, latestServiceVersionInfo);
+                        }
                         break;
                 }
             } catch (error) {
@@ -3494,7 +3608,7 @@ async function checkAndDownloadFrpc() {
 
         // 显示进度条 UI
         const progressContainer = document.getElementById('downloadProgressContainer');
-        const progressBar = document.querySelector('.progress-bar');
+        const progressBar = document.getElementById('downloadProgressBar');
         const progressText = document.getElementById('downloadProgressText');
         const startDownloadBtn = document.getElementById('startDownloadBtn');
         const cancelDownloadBtn = document.getElementById('cancelDownloadBtn');
@@ -3580,7 +3694,7 @@ function resetDownloadUI() {
     if (progressContainer) progressContainer.style.display = 'none';
     
     // 重置进度条
-    const progressBar = document.querySelector('.progress-bar');
+    const progressBar = document.getElementById('downloadProgressBar');
     if (progressBar) {
         progressBar.style.width = '0%';
         progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
@@ -3650,7 +3764,7 @@ function setElementText(id, value) {
 function markStatusMetric(cardId, metricClass) {
     const card = document.getElementById(cardId);
     if (!card) return;
-    card.classList.remove('metric-running', 'metric-offline', 'metric-error');
+    card.classList.remove('metric-running', 'metric-warning', 'metric-offline', 'metric-error');
     if (metricClass) {
         card.classList.add(metricClass);
     }
@@ -3738,6 +3852,242 @@ function buildInlineVersionHint(baseText, versionInfo = buildVersionInfo()) {
     return `${baseText}，版本 ${frpcVersion}`;
 }
 
+function getRestartProgressElements() {
+    return {
+        container: document.getElementById('restartProgressContainer'),
+        bar: document.getElementById('restartProgressBar'),
+        text: document.getElementById('restartProgressText')
+    };
+}
+
+function setRestartProgressVariant(bar, variant = 'warning', animate = true) {
+    if (!bar) return;
+
+    const paletteMap = {
+        warning: 'linear-gradient(135deg, var(--warning-color), #d97706)',
+        success: 'linear-gradient(135deg, var(--success-color), #059669)',
+        error: 'linear-gradient(135deg, var(--error-color), #dc2626)'
+    };
+
+    bar.style.background = paletteMap[variant] || paletteMap.warning;
+    bar.classList.toggle('progress-bar-striped', animate);
+    bar.classList.toggle('progress-bar-animated', animate);
+}
+
+function renderRestartProgress(progress, message, variant = 'warning', animate = true) {
+    const { container, bar, text } = getRestartProgressElements();
+    if (!container || !bar || !text) return;
+
+    const safeProgress = Math.max(0, Math.min(100, Math.round(progress || 0)));
+    container.style.display = 'block';
+    bar.style.width = `${safeProgress}%`;
+    bar.textContent = `${safeProgress}%`;
+    setRestartProgressVariant(bar, variant, animate);
+    text.textContent = message || '';
+}
+
+function stopRestartVisualTimer() {
+    if (restartVisualTimer) {
+        clearInterval(restartVisualTimer);
+        restartVisualTimer = null;
+    }
+}
+
+function stopRestartStatusPolling() {
+    if (restartStatusTimer) {
+        clearInterval(restartStatusTimer);
+        restartStatusTimer = null;
+    }
+}
+
+function hideRestartProgress(resetState = true) {
+    if (restartHideTimer) {
+        clearTimeout(restartHideTimer);
+        restartHideTimer = null;
+    }
+    stopRestartVisualTimer();
+    stopRestartStatusPolling();
+
+    const { container, bar, text } = getRestartProgressElements();
+    if (container) container.style.display = 'none';
+    if (bar) {
+        bar.style.width = '0%';
+        bar.textContent = '0%';
+        setRestartProgressVariant(bar, 'warning', true);
+    }
+    if (text) {
+        text.textContent = '正在准备重启...';
+    }
+
+    if (resetState) {
+        restartProgressState = {
+            active: false,
+            visualProgress: 0,
+            targetProgress: 0,
+            message: '',
+            lastSnapshot: null
+        };
+    }
+}
+
+function startRestartVisualTimer() {
+    if (restartVisualTimer) return;
+
+    restartVisualTimer = setInterval(() => {
+        const snapshot = restartProgressState.lastSnapshot || {};
+        const activeCap = snapshot.completed ? 100 : Math.max(restartProgressState.targetProgress || 0, 92);
+        if (restartProgressState.visualProgress < activeCap) {
+            restartProgressState.visualProgress = Math.min(
+                activeCap,
+                restartProgressState.visualProgress + (snapshot.completed ? 6 : 2)
+            );
+            renderRestartProgress(
+                restartProgressState.visualProgress,
+                restartProgressState.message || '正在后台重启 frpc 服务...',
+                snapshot.completed ? (snapshot.success ? 'success' : 'error') : 'warning',
+                !snapshot.completed
+            );
+        }
+    }, 220);
+}
+
+function applyRestartTaskSnapshot(snapshot) {
+    if (!snapshot) return;
+
+    restartProgressState.lastSnapshot = snapshot;
+    if (snapshot.service_status) {
+        latestServiceVersionInfo = buildVersionInfo(snapshot.service_status);
+    }
+
+    if (snapshot.is_restarting) {
+        restartProgressState.active = true;
+        restartProgressState.targetProgress = Math.max(snapshot.progress || 0, 8);
+        restartProgressState.visualProgress = Math.max(
+            restartProgressState.visualProgress,
+            Math.min(restartProgressState.targetProgress, 20)
+        );
+        restartProgressState.message = snapshot.message || '正在后台重启 frpc 服务...';
+        renderRestartProgress(
+            restartProgressState.visualProgress,
+            restartProgressState.message,
+            'warning',
+            true
+        );
+        startRestartVisualTimer();
+        applyServiceStatusState(
+            'restarting',
+            snapshot.service_status ? snapshot.service_status.pid : null,
+            restartProgressState.message,
+            latestServiceVersionInfo
+        );
+        return;
+    }
+
+    if (snapshot.completed) {
+        restartProgressState.active = false;
+        restartProgressState.targetProgress = 100;
+        restartProgressState.visualProgress = 100;
+        restartProgressState.message = snapshot.message || (snapshot.success ? 'frpc 服务已重启' : '重启失败');
+        renderRestartProgress(
+            100,
+            restartProgressState.message,
+            snapshot.success ? 'success' : 'error',
+            false
+        );
+        stopRestartVisualTimer();
+        stopRestartStatusPolling();
+
+        const serviceStatus = snapshot.service_status || null;
+        if (snapshot.success) {
+            const finalStatus = serviceStatus && serviceStatus.status ? serviceStatus.status : 'running';
+            const finalPid = serviceStatus ? serviceStatus.pid : null;
+            const finalErrorMessage = serviceStatus ? (serviceStatus.error_message || '') : '';
+            applyServiceStatusState(finalStatus, finalPid, finalErrorMessage, latestServiceVersionInfo);
+        } else {
+            applyServiceStatusState(
+                'error',
+                serviceStatus ? serviceStatus.pid : null,
+                snapshot.error_message || restartProgressState.message,
+                latestServiceVersionInfo
+            );
+        }
+
+        restartHideTimer = setTimeout(() => {
+            hideRestartProgress(true);
+        }, snapshot.success ? 1800 : 2600);
+    }
+}
+
+async function pollRestartStatusOnce() {
+    try {
+        const response = await fetch('/frpc/restart-status', {
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const snapshot = await response.json();
+        if (snapshot.is_restarting || snapshot.completed) {
+            applyRestartTaskSnapshot(snapshot);
+        } else if (!restartProgressState.active && !snapshot.completed) {
+            hideRestartProgress(false);
+        }
+    } catch (error) {
+        if (!restartProgressState.active) {
+            return;
+        }
+
+        restartProgressState.message = '连接暂时中断，正在等待服务恢复...';
+        renderRestartProgress(
+            Math.max(restartProgressState.visualProgress, restartProgressState.targetProgress || 12),
+            restartProgressState.message,
+            'warning',
+            true
+        );
+        applyServiceStatusState('restarting', null, restartProgressState.message, latestServiceVersionInfo);
+    }
+}
+
+function startRestartStatusPolling() {
+    stopRestartStatusPolling();
+    pollRestartStatusOnce();
+    restartStatusTimer = setInterval(() => {
+        pollRestartStatusOnce();
+    }, 1500);
+}
+
+function beginRestartTracking(snapshot = null) {
+    if (restartHideTimer) {
+        clearTimeout(restartHideTimer);
+        restartHideTimer = null;
+    }
+
+    if (snapshot) {
+        restartProgressState.visualProgress = Math.max(
+            restartProgressState.visualProgress,
+            snapshot.progress || 8
+        );
+        applyRestartTaskSnapshot(snapshot);
+    } else {
+        restartProgressState.active = true;
+        restartProgressState.visualProgress = Math.max(restartProgressState.visualProgress, 8);
+        restartProgressState.targetProgress = restartProgressState.visualProgress;
+        restartProgressState.message = '已提交重启请求，准备开始执行';
+        renderRestartProgress(
+            restartProgressState.visualProgress,
+            restartProgressState.message,
+            'warning',
+            true
+        );
+        applyServiceStatusState('restarting', null, restartProgressState.message, latestServiceVersionInfo);
+        startRestartVisualTimer();
+    }
+    startRestartStatusPolling();
+}
+
 function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = buildVersionInfo()) {
     const indicator = document.getElementById('statusIndicator');
     if (!indicator) return;
@@ -3748,8 +4098,8 @@ function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = b
     const stopBtn = document.getElementById('stopBtn');
     const restartBtn = document.getElementById('restartBtn');
 
-    indicator.classList.remove('online', 'offline', 'error');
-    dot.classList.remove('online', 'offline', 'error');
+    indicator.classList.remove('online', 'warning', 'offline', 'error');
+    dot.classList.remove('online', 'warning', 'offline', 'error');
 
     let badgeClass = 'offline';
     let badgeText = 'FRPC 状态';
@@ -3768,6 +4118,15 @@ function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = b
             pidValue = pid ? String(pid) : '--';
             pidHint = pid ? '当前活跃进程' : '等待实例注册';
             metricClass = 'metric-running';
+            break;
+        case 'restarting':
+            badgeClass = 'warning';
+            badgeText = 'frpc 重启中';
+            stateValue = '重启中';
+            stateHint = buildInlineVersionHint(errorMessage || '正在等待服务恢复连接', versionInfo);
+            pidValue = pid ? String(pid) : '--';
+            pidHint = pid ? '重启中的实例进程' : '等待服务重新连线';
+            metricClass = 'metric-warning';
             break;
         case 'error':
             badgeClass = 'error';
@@ -3801,10 +4160,19 @@ function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = b
     refreshStatusTimestamp();
 
     markStatusMetric('statusStateCard', metricClass);
-    markStatusMetric('statusPidCard', badgeClass === 'running' ? 'metric-running' : badgeClass === 'error' ? 'metric-error' : 'metric-offline');
+    markStatusMetric(
+        'statusPidCard',
+        badgeClass === 'running'
+            ? 'metric-running'
+            : badgeClass === 'warning'
+                ? 'metric-warning'
+                : badgeClass === 'error'
+                    ? 'metric-error'
+                    : 'metric-offline'
+    );
     markStatusMetric('statusSyncCard', metricClass);
 
-    if (startBtn) startBtn.disabled = (status === 'running');
+    if (startBtn) startBtn.disabled = (status === 'running' || status === 'restarting');
     if (stopBtn) stopBtn.disabled = (status !== 'running');
     if (restartBtn) restartBtn.disabled = (status !== 'running');
 }
@@ -3928,12 +4296,16 @@ async function restartService() {
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorPayload = await response.json().catch(() => null);
+            throw new Error(errorPayload && errorPayload.message ? errorPayload.message : `HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        showResultModal(data.success ? '重启成功' : '重启失败', data.message);
-        updateServiceStatus();
+        if (!data.success) {
+            throw new Error(data.message || '重启任务提交失败');
+        }
+
+        beginRestartTracking(data.restart || null);
     } catch (error) {
         console.error('重启服务失败:', error);
         showResultModal('重启服务失败', '重启服务失败: ' + error.message);
@@ -3948,10 +4320,27 @@ async function updateServiceStatus() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        applyServiceStatusState(data.status, data.pid, data.error_message || '', buildVersionInfo(data));
+        latestServiceVersionInfo = buildVersionInfo(data);
+
+        if (restartProgressState.active) {
+            applyServiceStatusState(
+                'restarting',
+                data.pid,
+                restartProgressState.message || '正在后台重启 frpc 服务...',
+                latestServiceVersionInfo
+            );
+            return;
+        }
+
+        applyServiceStatusState(data.status, data.pid, data.error_message || '', latestServiceVersionInfo);
     } catch (error) {
         console.error('获取服务状态失败:', error);
-        applyServiceStatusState('error', null, '状态获取失败，请稍后重试');
+        if (restartProgressState.active) {
+            restartProgressState.message = '连接暂时中断，正在等待服务恢复...';
+            applyServiceStatusState('restarting', null, restartProgressState.message, latestServiceVersionInfo);
+            return;
+        }
+        applyServiceStatusState('error', null, '状态获取失败，请稍后重试', latestServiceVersionInfo);
     }
 }
 
@@ -4079,6 +4468,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setLogConnectionState('等待连接');
     updateLogContent('正在加载日志...', { scroll: false });
     updateServiceStatus();
+    pollRestartStatusOnce().finally(() => {
+        if (restartProgressState.active) {
+            startRestartStatusPolling();
+        }
+    });
 
     // 启用服务器配置、客户端配置的表头拖拽滚动（滚动容器为 #configTabsContent）
     enableHeaderDragScroll('#server .modern-table thead', '#configTabsContent');
