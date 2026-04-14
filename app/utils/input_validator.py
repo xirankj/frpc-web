@@ -11,6 +11,13 @@ class InputValidator:
     HOSTNAME_PATTERN = re.compile(
         r'^(?=.{1,253}$)(?!-)(?:[A-Za-z0-9-]{1,63}(?<!-)\.)*[A-Za-z0-9-]{1,63}(?<!-)$'
     )
+    AUTO_RETRY_DEFAULTS = {
+        'enabled': False,
+        'triggerOnStartFailure': True,
+        'triggerOnConnectionFailure': True,
+        'maxRetries': 3,
+        'retryIntervalMinutes': 10,
+    }
     
     @staticmethod
     def validate_json_request(required_fields: List[str], optional_fields: List[str] = None) -> Dict[str, Any]:
@@ -128,6 +135,18 @@ class InputValidator:
             return 1 <= port_int <= 65535
         except (ValueError, TypeError):
             return False
+
+    @staticmethod
+    def normalize_auto_retry_config(config: Any) -> Dict[str, Any]:
+        """规范化自动重试配置。"""
+        if not isinstance(config, dict):
+            return dict(InputValidator.AUTO_RETRY_DEFAULTS)
+
+        normalized = dict(InputValidator.AUTO_RETRY_DEFAULTS)
+        for key in normalized.keys():
+            if key in config:
+                normalized[key] = config[key]
+        return normalized
     
     @staticmethod
     def validate_frpc_config(config: Dict[str, Any]) -> List[str]:
@@ -224,6 +243,38 @@ class InputValidator:
                 # 验证路由
                 if proxy.get('route') is not None and not isinstance(proxy.get('route'), str):
                     errors.append(f"代理配置 {i+1} route 必须是字符串")
+
+        # 验证自动重试配置（仅用于 Web 管理配置）
+        if 'autoRetry' in config and config['autoRetry'] is not None:
+            auto_retry = config['autoRetry']
+            if not isinstance(auto_retry, dict):
+                errors.append("自动重试配置必须是对象")
+            else:
+                normalized_auto_retry = InputValidator.normalize_auto_retry_config(auto_retry)
+
+                for field in ('enabled', 'triggerOnStartFailure', 'triggerOnConnectionFailure'):
+                    if field in auto_retry and not isinstance(auto_retry[field], bool):
+                        errors.append(f"自动重试配置 {field} 必须是布尔值")
+
+                try:
+                    max_retries = int(normalized_auto_retry['maxRetries'])
+                    if not 1 <= max_retries <= 100:
+                        errors.append("自动重试最大次数必须在 1-100 之间")
+                except (TypeError, ValueError):
+                    errors.append("自动重试最大次数必须是数字")
+
+                try:
+                    retry_interval = int(normalized_auto_retry['retryIntervalMinutes'])
+                    if not 1 <= retry_interval <= 1440:
+                        errors.append("自动重试间隔必须在 1-1440 分钟之间")
+                except (TypeError, ValueError):
+                    errors.append("自动重试间隔必须是数字")
+
+                if normalized_auto_retry['enabled'] and not (
+                    normalized_auto_retry['triggerOnStartFailure']
+                    or normalized_auto_retry['triggerOnConnectionFailure']
+                ):
+                    errors.append("启用自动重试时，至少需要选择一种触发条件")
         
         return errors
     

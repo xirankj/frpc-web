@@ -2147,6 +2147,11 @@
                                     <strong class="status-metric-value" id="statusLastUpdate">尚未刷新</strong>
                                     <span class="status-metric-hint" id="statusSyncHint">最近同步时间</span>
                                 </div>
+                                <div class="status-metric-card" id="statusAutoRetryCard">
+                                    <span class="status-metric-label"><i class="bi bi-arrow-repeat"></i> 自动重试</span>
+                                    <strong class="status-metric-value" id="statusAutoRetryValue">未启用</strong>
+                                    <span class="status-metric-hint" id="statusAutoRetryHint">未配置自动重试策略</span>
+                                </div>
                             </div>
                         </section>
 
@@ -2343,6 +2348,49 @@
                       <label class="form-label">Issuer</label>
                       <input type="text" class="form-control" id="modalAuthIssuer" placeholder="https://issuer.example.com">
                       <div class="field-caption">OIDC 发行者</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section class="form-section">
+                <div class="form-switch-panel">
+                  <div>
+                    <h6 class="form-section-title">自动重连策略</h6>
+                    <p class="form-section-description">检测到启动失败或连接失败后，按设定间隔自动重启 frpc 重试连接。</p>
+                  </div>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="enableAutoRetry" onchange="toggleAutoRetrySettings()">
+                    <label class="form-check-label" for="enableAutoRetry">启用</label>
+                  </div>
+                </div>
+                <div id="autoRetryConfig" class="form-grid" style="display: none;">
+                  <div class="form-grid form-grid-2">
+                    <div class="field-group">
+                      <label class="form-label">最大重试次数</label>
+                      <input type="number" class="form-control" id="modalAutoRetryMaxRetries" min="1" max="100" value="3">
+                      <div class="field-caption">达到上限后停止自动重启</div>
+                    </div>
+                    <div class="field-group">
+                      <label class="form-label">重试间隔（分钟）</label>
+                      <input type="number" class="form-control" id="modalAutoRetryIntervalMinutes" min="1" max="1440" value="10">
+                      <div class="field-caption">支持 10 分钟、30 分钟等自定义间隔</div>
+                    </div>
+                  </div>
+                  <div class="form-grid form-grid-2">
+                    <div class="field-group">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="modalRetryOnStartFailure" checked>
+                        <label class="form-check-label" for="modalRetryOnStartFailure">启动失败时自动重试</label>
+                      </div>
+                      <div class="field-caption">适用于启动后立即退出、配置异常等场景</div>
+                    </div>
+                    <div class="field-group">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="modalRetryOnConnectionFailure" checked>
+                        <label class="form-check-label" for="modalRetryOnConnectionFailure">连接失败时自动重试</label>
+                      </div>
+                      <div class="field-caption">适用于连接超时、服务端不可达等场景</div>
                     </div>
                   </div>
                 </div>
@@ -2676,6 +2724,7 @@ let wsLogTimer = null;
 let wsReconnectTimer = null; // WebSocket 重连定时器
 let wsShouldReconnect = true; // 是否允许自动重连
 let latestServiceVersionInfo = buildVersionInfo();
+let latestAutoRetryStatus = normalizeAutoRetryStatus();
 let restartStatusTimer = null;
 let restartVisualTimer = null;
 let restartHideTimer = null;
@@ -2686,6 +2735,141 @@ let restartProgressState = {
     message: '',
     lastSnapshot: null
 };
+
+function normalizeAutoRetryConfig(config = {}) {
+    const defaults = {
+        enabled: false,
+        triggerOnStartFailure: true,
+        triggerOnConnectionFailure: true,
+        maxRetries: 3,
+        retryIntervalMinutes: 10
+    };
+
+    if (!config || typeof config !== 'object') {
+        return { ...defaults };
+    }
+
+    return {
+        enabled: Boolean(config.enabled),
+        triggerOnStartFailure: config.triggerOnStartFailure !== false,
+        triggerOnConnectionFailure: config.triggerOnConnectionFailure !== false,
+        maxRetries: Number.parseInt(config.maxRetries ?? defaults.maxRetries, 10) || defaults.maxRetries,
+        retryIntervalMinutes: Number.parseInt(config.retryIntervalMinutes ?? defaults.retryIntervalMinutes, 10) || defaults.retryIntervalMinutes
+    };
+}
+
+function normalizeAutoRetryStatus(payload = {}) {
+    const config = normalizeAutoRetryConfig(payload.auto_retry || payload.autoRetry || payload);
+    return {
+        ...config,
+        retryCount: Number.parseInt(payload.retryCount ?? payload.retry_count ?? 0, 10) || 0,
+        nextAttemptNumber: Number.parseInt(payload.nextAttemptNumber ?? payload.next_attempt_number ?? 0, 10) || null,
+        waiting: Boolean(payload.waiting),
+        exhausted: Boolean(payload.exhausted),
+        nextRetryAt: Number(payload.nextRetryAt ?? payload.next_retry_at ?? 0) || 0,
+        lastReason: payload.lastReason || payload.last_reason || '',
+        lastErrorMessage: payload.lastErrorMessage || payload.last_error_message || '',
+        lastResult: payload.lastResult || payload.last_result || ''
+    };
+}
+
+function stripWebOnlyConfigFields(config = {}) {
+    const { autoRetry, ...rest } = config;
+    return rest;
+}
+
+function buildAutoRetryHint(autoRetry = latestAutoRetryStatus) {
+    if (!autoRetry || !autoRetry.enabled) return '';
+    if (autoRetry.waiting) {
+        const nextAttempt = autoRetry.nextAttemptNumber || (autoRetry.retryCount + 1);
+        return `已计划自动重连，第 ${nextAttempt}/${autoRetry.maxRetries} 次将在 ${autoRetry.retryIntervalMinutes} 分钟后执行`;
+    }
+    if (autoRetry.exhausted) {
+        return autoRetry.lastResult || `自动重连已达到上限（${autoRetry.maxRetries} 次）`;
+    }
+    if (autoRetry.lastResult) {
+        return autoRetry.lastResult;
+    }
+    return `已启用自动重连，间隔 ${autoRetry.retryIntervalMinutes} 分钟`;
+}
+
+function appendAutoRetryHint(baseText, status, autoRetry = latestAutoRetryStatus) {
+    if (status === 'running') return baseText;
+    const retryHint = buildAutoRetryHint(autoRetry);
+    if (!retryHint) return baseText;
+    return `${baseText} · ${retryHint}`;
+}
+
+function buildAutoRetryTriggerLabel(autoRetry = latestAutoRetryStatus) {
+    const triggers = [];
+    if (autoRetry.triggerOnStartFailure) {
+        triggers.push('启动失败');
+    }
+    if (autoRetry.triggerOnConnectionFailure) {
+        triggers.push('连接失败');
+    }
+    return triggers.length ? triggers.join(' / ') : '未设置';
+}
+
+function formatAutoRetrySchedule(autoRetry = latestAutoRetryStatus) {
+    if (!autoRetry.nextRetryAt) return '';
+
+    const nextDate = new Date(autoRetry.nextRetryAt * 1000);
+    if (Number.isNaN(nextDate.getTime())) return '';
+
+    const remainingSeconds = Math.max(Math.round(autoRetry.nextRetryAt - (Date.now() / 1000)), 0);
+    const remainingMinutes = Math.max(Math.ceil(remainingSeconds / 60), 0);
+    const planTime = nextDate.toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    return remainingMinutes > 0
+        ? `${planTime}（约 ${remainingMinutes} 分钟后）`
+        : `${planTime}（即将执行）`;
+}
+
+function updateAutoRetryMetric(autoRetry = latestAutoRetryStatus, serviceStatus = 'stopped') {
+    const normalized = normalizeAutoRetryStatus(autoRetry);
+    let value = '未启用';
+    let hint = '未配置自动重试策略';
+    let metricClass = 'metric-offline';
+
+    if (normalized.enabled) {
+        const triggerLabel = buildAutoRetryTriggerLabel(normalized);
+        const remainingRetries = Number.parseInt(
+            normalized.remainingRetries ?? Math.max(normalized.maxRetries - normalized.retryCount, 0),
+            10
+        ) || 0;
+
+        value = '已启用';
+        hint = `触发条件：${triggerLabel}；间隔 ${normalized.retryIntervalMinutes} 分钟，最多 ${normalized.maxRetries} 次`;
+        metricClass = serviceStatus === 'running' ? 'metric-running' : 'metric-warning';
+
+        if (normalized.waiting) {
+            const nextAttempt = normalized.nextAttemptNumber || (normalized.retryCount + 1);
+            const scheduleText = formatAutoRetrySchedule(normalized);
+            value = `排队中 (${nextAttempt}/${normalized.maxRetries})`;
+            hint = `剩余 ${remainingRetries} 次；下次执行：${scheduleText || `${normalized.retryIntervalMinutes} 分钟后`}；触发：${triggerLabel}`;
+            metricClass = 'metric-warning';
+        } else if (normalized.exhausted) {
+            value = '已耗尽';
+            hint = normalized.lastResult || `自动重试已达到上限，触发条件：${triggerLabel}`;
+            metricClass = 'metric-error';
+        } else if (normalized.lastResult && serviceStatus !== 'running') {
+            value = '等待下一次异常';
+            hint = normalized.lastResult;
+            metricClass = 'metric-warning';
+        } else if (serviceStatus === 'running') {
+            value = '待命中';
+        }
+    }
+
+    setElementText('statusAutoRetryValue', value);
+    setElementText('statusAutoRetryHint', hint);
+    markStatusMetric('statusAutoRetryCard', metricClass);
+}
 
 // 添加输入验证函数
 function validateIP(ip) {
@@ -2802,10 +2986,11 @@ async function loadConfig() {
             serverAddr: config.serverAddr,
             serverPort: config.serverPort,
             webServer: config.webServer,
-            auth: config.auth
+            auth: config.auth,
+            autoRetry: normalizeAutoRetryConfig(config.autoRetry)
         }];
         // 客户端配置（包含启用状态）
-        clientConfigs = config.proxies || [];
+        clientConfigs = Array.isArray(config.proxies) ? config.proxies : [];
         renderServerTable();
         renderClientTable();
     } catch (error) {
@@ -2843,12 +3028,16 @@ function renderServerTable() {
         const authStatus = cfg.auth ? 
             `<span class="status-badge online"><span class="status-dot online"></span>${cfg.auth.method}</span>` : 
             `<span class="status-badge offline"><span class="status-dot offline"></span>未启用</span>`;
+        const autoRetry = normalizeAutoRetryConfig(cfg.autoRetry);
+        const retrySummary = autoRetry.enabled
+            ? `<div class="field-caption">自动重连：每 ${autoRetry.retryIntervalMinutes} 分钟重启一次，最多 ${autoRetry.maxRetries} 次</div>`
+            : `<div class="field-caption">自动重连未启用</div>`;
         
         tbody.innerHTML += `<tr>
             <td><strong>${fmtSensitive(cfg.serverAddr)}</strong></td>
             <td><code>${fmtSensitive(cfg.serverPort)}</code></td>
             <td>${webStatus}</td>
-            <td>${authStatus}</td>
+            <td>${authStatus}${retrySummary}</td>
             <td>
                 <div class="table-actions">
                     <button class='btn btn-sm btn-primary btn-modern' onclick='editServer(${idx})'>
@@ -3056,6 +3245,14 @@ function toggleAuthMethod() {
     }
 }
 
+function toggleAutoRetrySettings() {
+    const container = document.getElementById('autoRetryConfig');
+    const isChecked = document.getElementById('enableAutoRetry').checked;
+    if (container) {
+        container.style.display = isChecked ? 'grid' : 'none';
+    }
+}
+
 function openServerModal(editIdx = null) {
     document.getElementById('serverFormModal').reset();
     document.getElementById('serverEditIndex').value = editIdx !== null ? editIdx : '';
@@ -3063,8 +3260,14 @@ function openServerModal(editIdx = null) {
     // 默认关闭可选配置
     document.getElementById('enableWebServer').checked = false;
     document.getElementById('enableAuth').checked = false;
+    document.getElementById('enableAutoRetry').checked = false;
     document.getElementById('webServerConfig').style.display = 'none';
     document.getElementById('authConfig').style.display = 'none';
+    document.getElementById('autoRetryConfig').style.display = 'none';
+    document.getElementById('modalAutoRetryMaxRetries').value = '3';
+    document.getElementById('modalAutoRetryIntervalMinutes').value = '10';
+    document.getElementById('modalRetryOnStartFailure').checked = true;
+    document.getElementById('modalRetryOnConnectionFailure').checked = true;
     
     if (editIdx !== null) {
         const cfg = serverConfigs[editIdx];
@@ -3092,11 +3295,19 @@ function openServerModal(editIdx = null) {
                 document.getElementById('modalAuthIssuer').value = cfg.auth.oidc?.issuer || '';
             }
         }
+
+        const autoRetry = normalizeAutoRetryConfig(cfg.autoRetry);
+        document.getElementById('enableAutoRetry').checked = autoRetry.enabled;
+        document.getElementById('modalAutoRetryMaxRetries').value = autoRetry.maxRetries;
+        document.getElementById('modalAutoRetryIntervalMinutes').value = autoRetry.retryIntervalMinutes;
+        document.getElementById('modalRetryOnStartFailure').checked = autoRetry.triggerOnStartFailure;
+        document.getElementById('modalRetryOnConnectionFailure').checked = autoRetry.triggerOnConnectionFailure;
         
         // 显示/隐藏相关配置
         toggleWebServer();
         toggleAuth();
         toggleAuthMethod();
+        toggleAutoRetrySettings();
     }
     
     new bootstrap.Modal(document.getElementById('serverModal')).show();
@@ -3167,6 +3378,38 @@ function submitServerModal() {
                 issuer: document.getElementById('modalAuthIssuer').value
             };
         }
+    }
+
+    if (document.getElementById('enableAutoRetry').checked) {
+        const maxRetries = Number.parseInt(document.getElementById('modalAutoRetryMaxRetries').value, 10);
+        const retryIntervalMinutes = Number.parseInt(document.getElementById('modalAutoRetryIntervalMinutes').value, 10);
+        const triggerOnStartFailure = document.getElementById('modalRetryOnStartFailure').checked;
+        const triggerOnConnectionFailure = document.getElementById('modalRetryOnConnectionFailure').checked;
+
+        if (!Number.isInteger(maxRetries) || maxRetries < 1 || maxRetries > 100) {
+            showResultModal('验证失败', '自动重试最大次数必须在 1-100 之间');
+            return false;
+        }
+
+        if (!Number.isInteger(retryIntervalMinutes) || retryIntervalMinutes < 1 || retryIntervalMinutes > 1440) {
+            showResultModal('验证失败', '自动重试间隔必须在 1-1440 分钟之间');
+            return false;
+        }
+
+        if (!triggerOnStartFailure && !triggerOnConnectionFailure) {
+            showResultModal('验证失败', '启用自动重试时，至少需要选择一种触发条件');
+            return false;
+        }
+
+        cfg.autoRetry = {
+            enabled: true,
+            triggerOnStartFailure,
+            triggerOnConnectionFailure,
+            maxRetries,
+            retryIntervalMinutes
+        };
+    } else {
+        cfg.autoRetry = normalizeAutoRetryConfig();
     }
     
     if (idx === '') {
@@ -3250,7 +3493,7 @@ async function persistConfigArtifacts(config, options = {}) {
 
     if (enabledProxies.length > 0) {
         const frpcConfig = {
-            ...config,
+            ...stripWebOnlyConfigFields(config),
             proxies: enabledProxies.map(proxy => {
                 const { enabled, ...rest } = proxy;
                 return rest;
@@ -3301,6 +3544,7 @@ async function saveConfig() {
             serverPort: server.serverPort,
             webServer: server.webServer,
             auth: server.auth,
+            autoRetry: normalizeAutoRetryConfig(server.autoRetry),
             proxies: clientConfigs
         };
 
@@ -3573,6 +3817,7 @@ function connectWebSocket() {
                     }
                     case 'service_status':
                         latestServiceVersionInfo = buildVersionInfo(data);
+                        latestAutoRetryStatus = normalizeAutoRetryStatus(data.auto_retry || data.autoRetry);
                         if (restartProgressState.active) {
                             applyServiceStatusState(
                                 'restarting',
@@ -4123,7 +4368,10 @@ function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = b
             badgeClass = 'warning';
             badgeText = 'frpc 重启中';
             stateValue = '重启中';
-            stateHint = buildInlineVersionHint(errorMessage || '正在等待服务恢复连接', versionInfo);
+            stateHint = appendAutoRetryHint(
+                buildInlineVersionHint(errorMessage || '正在等待服务恢复连接', versionInfo),
+                'restarting'
+            );
             pidValue = pid ? String(pid) : '--';
             pidHint = pid ? '重启中的实例进程' : '等待服务重新连线';
             metricClass = 'metric-warning';
@@ -4132,7 +4380,10 @@ function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = b
             badgeClass = 'error';
             badgeText = 'frpc 异常';
             stateValue = '异常';
-            stateHint = buildInlineVersionHint(errorMessage || '实例状态异常', versionInfo);
+            stateHint = appendAutoRetryHint(
+                buildInlineVersionHint(errorMessage || '实例状态异常', versionInfo),
+                'error'
+            );
             pidValue = pid ? String(pid) : '--';
             pidHint = pid ? '异常实例进程' : '查看运行日志';
             metricClass = 'metric-error';
@@ -4142,7 +4393,10 @@ function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = b
             badgeClass = 'offline';
             badgeText = 'frpc 已停止';
             stateValue = '已停止';
-            stateHint = buildInlineVersionHint('未检测到活动实例', versionInfo);
+            stateHint = appendAutoRetryHint(
+                buildInlineVersionHint('未检测到活动实例', versionInfo),
+                'stopped'
+            );
             pidValue = '--';
             pidHint = '无活动进程';
             metricClass = 'metric-offline';
@@ -4157,6 +4411,7 @@ function applyServiceStatusState(status, pid, errorMessage = '', versionInfo = b
     setElementText('statusStateHint', stateHint);
     setElementText('statusPidValue', pidValue);
     setElementText('statusPidHint', pidHint);
+    updateAutoRetryMetric(latestAutoRetryStatus, status);
     refreshStatusTimestamp();
 
     markStatusMetric('statusStateCard', metricClass);
@@ -4321,6 +4576,7 @@ async function updateServiceStatus() {
         }
         const data = await response.json();
         latestServiceVersionInfo = buildVersionInfo(data);
+        latestAutoRetryStatus = normalizeAutoRetryStatus(data.auto_retry || data.autoRetry);
 
         if (restartProgressState.active) {
             applyServiceStatusState(
@@ -4508,6 +4764,7 @@ function readConfigFile() {
             serverPort: data.serverPort,
             webServer: data.webServer,
             auth: data.auth,
+            autoRetry: normalizeAutoRetryConfig(data.autoRetry),
             proxies: proxies.map(proxy => {
                 const { enabled, ...rest } = proxy;
                 return rest;
@@ -4530,6 +4787,7 @@ function exportConfigFile() {
             serverPort: data.serverPort,
             webServer: data.webServer,
             auth: data.auth,
+            autoRetry: normalizeAutoRetryConfig(data.autoRetry),
             proxies: proxies.map(proxy => {
                 const { enabled, ...rest } = proxy;
                 return rest;
@@ -4566,6 +4824,8 @@ function saveConfigFile() {
             enabled: true  // 默认启用
         }));
     }
+
+    json.autoRetry = normalizeAutoRetryConfig(json.autoRetry);
     
     // 检查是否已存在
     fetch('/config.json').then(r => {

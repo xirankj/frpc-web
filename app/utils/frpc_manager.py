@@ -4,24 +4,49 @@ import signal
 import psutil
 import logging
 import requests
+import json
 from pathlib import Path
 import threading
 import time
 import queue
 import re
 from app.runtime_settings import load_runtime_settings, resolve_runtime_path
+from app.utils.input_validator import InputValidator
 
 logger = logging.getLogger(__name__)
 
 class FrpcManager:
     VERSION_CACHE_TTL = 60
     VERSION_PATTERN = re.compile(r'v?\d+\.\d+\.\d+(?:[-+._][0-9A-Za-z]+)*')
+    AUTO_RETRY_POLL_INTERVAL = 5
+    CONNECTION_ERROR_PATTERNS = (
+        r'connection refused',
+        r'connection reset',
+        r'connection timeout',
+        r'failed to connect to server',
+        r'failed to login to server',
+        r'no route to host',
+        r'i/o timeout',
+        r'network is unreachable',
+    )
+    STARTUP_ERROR_PATTERNS = (
+        r'服务启动后立即退出',
+        r'启动失败',
+        r'failed to start proxy',
+        r'bind: cannot assign requested address',
+        r'permission denied',
+        r'address already in use',
+        r'no such file or directory',
+        r'未找到 frpc 可执行文件',
+        r'未找到 frpc 配置文件',
+    )
 
-    def __init__(self):
+    def __init__(self, enable_auto_retry_watchdog: bool = False):
         runtime_settings = load_runtime_settings()
         self.frpc_work_dir = runtime_settings.frpc_work_dir
         self.frpc_path = runtime_settings.frpc_binary_path
         self.config_path = runtime_settings.frpc_config_path
+        self.web_config_path = runtime_settings.web_config_path
         # 将 frpc 日志输出目录与应用日志目录保持一致，并兼容容器路径映射
         configured_log_dir = os.getenv('FRPC_LOG_DIR')
         if configured_log_dir:
@@ -42,6 +67,11 @@ class FrpcManager:
         self.stop_log_thread = False
         self.error_state = False
         self.error_message = ""
+        self._operation_lock = threading.RLock()
+        self._auto_retry_lock = threading.Lock()
+        self._auto_retry_thread = None
+        self._stop_auto_retry_thread = False
+        self._auto_retry_runtime = self._build_default_auto_retry_runtime()
         self._version_cache_lock = threading.Lock()
         self._version_cache = {
             'frpc': {
@@ -59,6 +89,8 @@ class FrpcManager:
         }
         self._start_log_thread()  # 在初始化时就启动日志线程
         self._recover_process()  # 尝试恢复进程信息
+        if enable_auto_retry_watchdog:
+            self._start_auto_retry_watchdog()
 
     def _append_log(self, message: str):
         """安全地追加一行日志，避免错误处理再次抛出异常。"""
@@ -274,6 +306,215 @@ class FrpcManager:
             'frps_version_hint': server_version['hint'],
         }
 
+    def _build_default_auto_retry_runtime(self):
+        """构建自动重试运行时默认状态。"""
+        return {
+            'retryCount': 0,
+            'waiting': False,
+            'nextRetryAt': 0.0,
+            'lastReason': '',
+            'lastErrorMessage': '',
+            'lastAttemptAt': 0.0,
+            'lastResult': '',
+            'exhausted': False,
+            'updatedAt': 0.0,
+        }
+
+    def _load_auto_retry_config(self):
+        """从 Web 配置文件读取自动重试设置。"""
+        try:
+            if not os.path.exists(self.web_config_path):
+                return InputValidator.normalize_auto_retry_config({})
+
+            with open(self.web_config_path, 'r', encoding='utf-8') as f:
+                payload = json.load(f)
+
+            return InputValidator.normalize_auto_retry_config(payload.get('autoRetry'))
+        except Exception as e:
+            logger.warning(f'读取自动重试配置失败，已回退为默认值: {str(e)}')
+            return InputValidator.normalize_auto_retry_config({})
+
+    @classmethod
+    def _match_error_patterns(cls, message: str, patterns) -> bool:
+        """匹配错误文本与模式列表。"""
+        candidate = (message or '').strip()
+        if not candidate:
+            return False
+        return any(re.search(pattern, candidate, re.IGNORECASE) for pattern in patterns)
+
+    def _classify_failure_reason(self, status: dict):
+        """根据状态与最近日志识别失败原因。"""
+        error_message = (status.get('error_message') or self.error_message or '').strip()
+        recent_logs = '\n'.join(self.get_logs(20))
+        inspection_text = '\n'.join(filter(None, [error_message, recent_logs]))
+
+        if self._match_error_patterns(inspection_text, self.CONNECTION_ERROR_PATTERNS):
+            return 'connection_failure', error_message or '检测到连接失败'
+
+        if self._match_error_patterns(inspection_text, self.STARTUP_ERROR_PATTERNS):
+            return 'startup_failure', error_message or '检测到启动失败'
+
+        return None, error_message
+
+    def _reset_auto_retry_runtime(self, keep_last_result: bool = False):
+        """重置自动重试运行时状态。"""
+        with self._auto_retry_lock:
+            last_result = self._auto_retry_runtime.get('lastResult', '') if keep_last_result else ''
+            self._auto_retry_runtime = self._build_default_auto_retry_runtime()
+            self._auto_retry_runtime['lastResult'] = last_result
+            self._auto_retry_runtime['updatedAt'] = time.time()
+
+    def cancel_auto_retry(self, reason: str = '', only_if_active: bool = False):
+        """取消当前自动重试计划，供手动启停操作调用。"""
+        with self._auto_retry_lock:
+            runtime = dict(self._auto_retry_runtime)
+
+        has_active_state = (
+            runtime.get('waiting', False)
+            or runtime.get('exhausted', False)
+            or runtime.get('retryCount', 0) > 0
+            or runtime.get('nextRetryAt', 0.0) > 0
+            or bool(runtime.get('lastReason'))
+            or bool(runtime.get('lastErrorMessage'))
+        )
+        if only_if_active and not has_active_state:
+            return False
+
+        self._reset_auto_retry_runtime()
+        if reason:
+            with self._auto_retry_lock:
+                self._auto_retry_runtime['lastResult'] = reason
+                self._auto_retry_runtime['updatedAt'] = time.time()
+        return has_active_state
+
+    def _mark_auto_retry_waiting(self, failure_reason: str, error_message: str, policy: dict):
+        """登记等待中的自动重试任务。"""
+        with self._auto_retry_lock:
+            self._auto_retry_runtime['waiting'] = True
+            self._auto_retry_runtime['exhausted'] = False
+            self._auto_retry_runtime['lastReason'] = failure_reason
+            self._auto_retry_runtime['lastErrorMessage'] = error_message
+            self._auto_retry_runtime['nextRetryAt'] = time.time() + (int(policy['retryIntervalMinutes']) * 60)
+            self._auto_retry_runtime['updatedAt'] = time.time()
+            next_attempt_number = self._auto_retry_runtime['retryCount'] + 1
+            self._auto_retry_runtime['lastResult'] = (
+                f"检测到{ '连接失败' if failure_reason == 'connection_failure' else '启动失败' }，"
+                f"将在 {policy['retryIntervalMinutes']} 分钟后执行第 {next_attempt_number} 次自动重启"
+            )
+
+    def _mark_auto_retry_attempt_result(self, success: bool, message: str, policy: dict):
+        """记录自动重试尝试结果。"""
+        with self._auto_retry_lock:
+            self._auto_retry_runtime['retryCount'] += 1
+            self._auto_retry_runtime['lastAttemptAt'] = time.time()
+            self._auto_retry_runtime['updatedAt'] = time.time()
+            self._auto_retry_runtime['waiting'] = False
+            self._auto_retry_runtime['nextRetryAt'] = 0.0
+
+            if success:
+                self._auto_retry_runtime['exhausted'] = False
+                self._auto_retry_runtime['lastResult'] = (
+                    f"第 {self._auto_retry_runtime['retryCount']} 次自动重启成功：{message}"
+                )
+                return
+
+            max_retries = int(policy['maxRetries'])
+            if self._auto_retry_runtime['retryCount'] >= max_retries:
+                self._auto_retry_runtime['exhausted'] = True
+                self._auto_retry_runtime['lastResult'] = (
+                    f"自动重试已达到上限（{max_retries} 次），最近一次失败：{message}"
+                )
+                return
+
+            self._auto_retry_runtime['waiting'] = True
+            self._auto_retry_runtime['exhausted'] = False
+            self._auto_retry_runtime['nextRetryAt'] = time.time() + (int(policy['retryIntervalMinutes']) * 60)
+            next_attempt_number = self._auto_retry_runtime['retryCount'] + 1
+            self._auto_retry_runtime['lastResult'] = (
+                f"第 {self._auto_retry_runtime['retryCount']} 次自动重启失败：{message}；"
+                f"将在 {policy['retryIntervalMinutes']} 分钟后执行第 {next_attempt_number} 次重试"
+            )
+
+    def get_auto_retry_snapshot(self):
+        """返回自动重试策略与运行时状态。"""
+        policy = self._load_auto_retry_config()
+        with self._auto_retry_lock:
+            runtime = dict(self._auto_retry_runtime)
+
+        snapshot = {
+            **policy,
+            **runtime,
+        }
+        snapshot['nextAttemptNumber'] = (
+            runtime['retryCount'] + 1
+            if policy['enabled'] and runtime['waiting'] and not runtime['exhausted']
+            else None
+        )
+        snapshot['remainingRetries'] = (
+            max(int(policy['maxRetries']) - int(runtime['retryCount']), 0)
+            if policy['enabled']
+            else 0
+        )
+        return snapshot
+
+    def _start_auto_retry_watchdog(self):
+        """启动自动重试监控线程。"""
+        if self._auto_retry_thread is None or not self._auto_retry_thread.is_alive():
+            self._stop_auto_retry_thread = False
+            self._auto_retry_thread = threading.Thread(target=self._auto_retry_watchdog_loop, daemon=True)
+            self._auto_retry_thread.start()
+            logger.info("自动重试监控线程已启动")
+
+    def _auto_retry_watchdog_loop(self):
+        """后台监控 frpc 错误状态并在需要时执行自动重试。"""
+        while not self._stop_auto_retry_thread:
+            try:
+                policy = self._load_auto_retry_config()
+                if not policy['enabled']:
+                    self._reset_auto_retry_runtime()
+                    continue
+
+                status = self.get_status(include_auto_retry=False)
+                failure_reason, error_message = self._classify_failure_reason(status)
+                should_handle_failure = (
+                    status.get('status') != 'running'
+                    and bool(error_message)
+                    and (
+                        (failure_reason == 'startup_failure' and policy['triggerOnStartFailure'])
+                        or (failure_reason == 'connection_failure' and policy['triggerOnConnectionFailure'])
+                    )
+                )
+
+                if not should_handle_failure:
+                    snapshot = self.get_auto_retry_snapshot()
+                    if status.get('status') == 'running' and not status.get('error_message'):
+                        self._reset_auto_retry_runtime()
+                    elif not status.get('error_message') and snapshot['waiting']:
+                        self._reset_auto_retry_runtime()
+                    continue
+
+                snapshot = self.get_auto_retry_snapshot()
+                if snapshot['exhausted']:
+                    continue
+
+                if not snapshot['waiting']:
+                    self._mark_auto_retry_waiting(failure_reason, error_message, policy)
+                    continue
+
+                if snapshot['nextRetryAt'] > time.time():
+                    continue
+
+                logger.warning(
+                    f"检测到 frpc { '连接' if failure_reason == 'connection_failure' else '启动' }失败，"
+                    f"开始执行第 {snapshot['retryCount'] + 1} 次自动重启"
+                )
+                success, message = self.restart(manual=False)
+                self._mark_auto_retry_attempt_result(success, message, policy)
+            except Exception as e:
+                logger.error(f"自动重试监控执行失败: {str(e)}")
+            finally:
+                time.sleep(self.AUTO_RETRY_POLL_INTERVAL)
+
     def _ensure_log_dir(self):
         """确保日志目录存在"""
         log_dir = self.log_dir if hasattr(self, 'log_dir') else os.path.dirname(self.log_path)
@@ -330,6 +571,7 @@ class FrpcManager:
             r'connection refused',
             r'connection reset',
             r'connection timeout',
+            r'no route to host',
             r'no such file or directory',
             r'permission denied',
             r'address already in use',
@@ -367,112 +609,131 @@ class FrpcManager:
             logger.error(f"恢复进程信息失败: {str(e)}")
             self.process = None
 
-    def start(self):
+    def start(self, manual: bool = True):
         """启动 frpc 服务"""
-        try:
-            # 重置错误状态
-            self.error_state = False
-            self.error_message = ""
+        with self._operation_lock:
+            try:
+                if manual:
+                    self.cancel_auto_retry(only_if_active=True)
 
-            # 检查是否已经在运行
-            if self.is_running():
-                logger.warning("frpc 服务已经在运行")
-                return False, "frpc 服务已经在运行"
+                # 重置错误状态
+                self.error_state = False
+                self.error_message = ""
 
-            if not os.path.exists(self.frpc_path):
-                self.error_state = True
-                self.error_message = "未找到 frpc 可执行文件"
-                logger.error(f"{self.error_message}: {self.frpc_path}")
-                return False, "未找到 frpc 可执行文件，请先下载或上传"
+                # 检查是否已经在运行
+                if self.is_running():
+                    logger.warning("frpc 服务已经在运行")
+                    return False, "frpc 服务已经在运行"
 
-            if not os.path.exists(self.config_path):
-                self.error_state = True
-                self.error_message = "未找到 frpc 配置文件"
-                logger.error(f"{self.error_message}: {self.config_path}")
-                return False, "未找到 frpc 配置文件，请先保存配置"
+                if not os.path.exists(self.frpc_path):
+                    self.error_state = True
+                    self.error_message = "未找到 frpc 可执行文件"
+                    logger.error(f"{self.error_message}: {self.frpc_path}")
+                    return False, "未找到 frpc 可执行文件，请先下载或上传"
 
-            # 确保 frpc 可执行
-            if not os.access(self.frpc_path, os.X_OK):
-                os.chmod(self.frpc_path, 0o755)
+                if not os.path.exists(self.config_path):
+                    self.error_state = True
+                    self.error_message = "未找到 frpc 配置文件"
+                    logger.error(f"{self.error_message}: {self.config_path}")
+                    return False, "未找到 frpc 配置文件，请先保存配置"
 
-            # 启动前清空日志文件
-            with open(self.log_path, 'w', encoding='utf-8') as log_file:
-                log_file.write(f"\n=== frpc 服务启动于 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+                # 确保 frpc 可执行
+                if not os.access(self.frpc_path, os.X_OK):
+                    os.chmod(self.frpc_path, 0o755)
 
-            # 确保日志线程在运行
-            self._start_log_thread()
+                # 启动前清空日志文件
+                with open(self.log_path, 'w', encoding='utf-8') as log_file:
+                    log_file.write(f"\n=== frpc 服务启动于 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
 
-            # 启动 frpc 进程
-            with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                self.process = subprocess.Popen(
-                    [self.frpc_path, '-c', self.config_path],
-                    stdout=log_file,
-                    stderr=log_file,
-                    cwd=self.frpc_work_dir,
-                    start_new_session=True  # 使用新的会话组
-                )
+                # 确保日志线程在运行
+                self._start_log_thread()
 
-            # 等待一段时间检查进程是否存活
-            time.sleep(2)
-            if not self.is_running():
-                self.error_state = True
-                self.error_message = "服务启动后立即退出，请检查日志"
-                logger.error("服务启动后立即退出")
+                # 启动 frpc 进程
                 with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                    log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [错误] {self.error_message}\n")
-                return False, "服务启动失败，请检查日志"
+                    self.process = subprocess.Popen(
+                        [self.frpc_path, '-c', self.config_path],
+                        stdout=log_file,
+                        stderr=log_file,
+                        cwd=self.frpc_work_dir,
+                        start_new_session=True  # 使用新的会话组
+                    )
 
-            if self.error_state:
-                return False, "服务启动失败，请检查日志"
+                # 等待一段时间检查进程是否存活
+                time.sleep(2)
+                if not self.is_running():
+                    self.error_state = True
+                    self.error_message = "服务启动后立即退出，请检查日志"
+                    logger.error("服务启动后立即退出")
+                    with open(self.log_path, 'a', encoding='utf-8') as log_file:
+                        log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [错误] {self.error_message}\n")
+                    return False, "服务启动失败，请检查日志"
 
-            logger.info(f"frpc 服务已启动，PID: {self.process.pid}")
-            with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [成功] frpc 服务已启动，PID: {self.process.pid}\n")
-            return True, f"frpc 服务已启动，PID: {self.process.pid}"
+                if self.error_state:
+                    return False, "服务启动失败，请检查日志"
 
-        except Exception as e:
-            logger.exception(f"启动 frpc 服务失败: {str(e)}")
-            self.error_state = True
-            self.error_message = "启动失败，请检查日志"
-            self._append_log(f"\n[错误] 启动失败，请查看应用日志获取详情\n")
-            return False, "启动失败，请检查日志或稍后重试"
+                logger.info(f"frpc 服务已启动，PID: {self.process.pid}")
+                with open(self.log_path, 'a', encoding='utf-8') as log_file:
+                    log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [成功] frpc 服务已启动，PID: {self.process.pid}\n")
+                return True, f"frpc 服务已启动，PID: {self.process.pid}"
 
-    def stop(self):
+            except Exception as e:
+                logger.exception(f"启动 frpc 服务失败: {str(e)}")
+                self.error_state = True
+                self.error_message = "启动失败，请检查日志"
+                self._append_log(f"\n[错误] 启动失败，请查看应用日志获取详情\n")
+                return False, "启动失败，请检查日志或稍后重试"
+
+    def stop(self, manual: bool = True):
         """停止 frpc 服务"""
-        try:
-            # 查找所有匹配的 frpc 进程
-            found = False
-            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-                try:
-                    if proc.info['name'] == 'frpc' and self.config_path in proc.info['cmdline']:
-                        found = True
-                        proc.terminate()
-                        try:
-                            proc.wait(timeout=5)
-                        except psutil.TimeoutExpired:
-                            proc.kill()
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                    continue
-            if found:
-                logger.info("frpc 服务已停止")
-                with open(self.log_path, 'a', encoding='utf-8') as log_file:
-                    log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [成功] frpc 服务已停止\n")
-                return True, "frpc 服务已停止"
-            else:
-                logger.warning("frpc 服务未运行")
-                return False, "frpc 服务未运行"
-        except Exception as e:
-            logger.exception(f"停止 frpc 服务失败: {str(e)}")
-            self._append_log(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [错误] 停止失败，请查看应用日志获取详情\n")
-            return False, "停止失败，请稍后重试"
+        with self._operation_lock:
+            try:
+                if manual:
+                    self.cancel_auto_retry(
+                        reason='已手动停止服务，自动重试已取消',
+                        only_if_active=True
+                    )
 
-    def restart(self):
+                # 查找所有匹配的 frpc 进程
+                found = False
+                for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                    try:
+                        if proc.info['name'] == 'frpc' and self.config_path in proc.info['cmdline']:
+                            found = True
+                            proc.terminate()
+                            try:
+                                proc.wait(timeout=5)
+                            except psutil.TimeoutExpired:
+                                proc.kill()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                        continue
+                if found:
+                    self.error_state = False
+                    self.error_message = ""
+                    logger.info("frpc 服务已停止")
+                    with open(self.log_path, 'a', encoding='utf-8') as log_file:
+                        log_file.write(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [成功] frpc 服务已停止\n")
+                    return True, "frpc 服务已停止"
+                else:
+                    logger.warning("frpc 服务未运行")
+                    return False, "frpc 服务未运行"
+            except Exception as e:
+                logger.exception(f"停止 frpc 服务失败: {str(e)}")
+                self._append_log(f"\n{time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]} [错误] 停止失败，请查看应用日志获取详情\n")
+                return False, "停止失败，请稍后重试"
+
+    def restart(self, manual: bool = True):
         """重启 frpc 服务"""
-        self.stop()
-        # 重启时也清空日志
-        with open(self.log_path, 'w', encoding='utf-8') as log_file:
-            log_file.write(f"\n=== frpc 服务重启于 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
-        return self.start()
+        with self._operation_lock:
+            if manual:
+                self.cancel_auto_retry(
+                    reason='已手动触发重启，原自动重试计划已取消',
+                    only_if_active=True
+                )
+            self.stop(manual=False)
+            # 重启时也清空日志
+            with open(self.log_path, 'w', encoding='utf-8') as log_file:
+                log_file.write(f"\n=== frpc 服务重启于 {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+            return self.start(manual=False)
 
     def is_running(self):
         """直接用 psutil 检查系统中是否有目标 frpc 进程"""
@@ -484,35 +745,45 @@ class FrpcManager:
                 continue
         return False
 
-    def get_status(self):
+    def get_status(self, include_auto_retry: bool = True):
         """获取 frpc 服务状态"""
         version_summary = self.get_version_summary()
+        auto_retry_snapshot = self.get_auto_retry_snapshot() if include_auto_retry else None
         try:
             for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
                 try:
                     if proc.info['name'] == 'frpc' and self.config_path in proc.info['cmdline']:
-                        return {
+                        payload = {
                             'status': 'running',
                             'pid': proc.info['pid'],
                             'error_message': self.error_message if self.error_state else '',
                             **version_summary,
                         }
+                        if auto_retry_snapshot is not None:
+                            payload['auto_retry'] = auto_retry_snapshot
+                        return payload
                 except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                     continue
-            return {
+            payload = {
                 'status': 'stopped',
                 'pid': None,
                 'error_message': self.error_message if self.error_state else '',
                 **version_summary,
             }
+            if auto_retry_snapshot is not None:
+                payload['auto_retry'] = auto_retry_snapshot
+            return payload
         except Exception as e:
             logger.error(f"获取状态失败: {str(e)}")
-            return {
+            payload = {
                 'status': 'error',
                 'pid': None,
                 'error_message': '状态读取失败，请稍后重试',
                 **version_summary,
             }
+            if auto_retry_snapshot is not None:
+                payload['auto_retry'] = auto_retry_snapshot
+            return payload
 
     def get_logs(self, lines=100):
         """只读取frpc.log文件内容，返回最新日志（去除ANSI颜色码）"""

@@ -18,10 +18,13 @@ from app.utils.input_validator import InputValidator
 
 logger = logging.getLogger(__name__)
 
+# Web 管理专用配置字段，只写入 config.json，不写入 frpc.json
+WEB_ONLY_CONFIG_FIELDS = ('autoRetry',)
+
 # 创建 WebSocket 实例
 sock = Sock()
 
-frpc_manager = FrpcManager()
+frpc_manager = FrpcManager(enable_auto_retry_watchdog=True)
 runtime_state.ensure_log_broadcaster_started()
 
 
@@ -61,6 +64,21 @@ def normalize_proxies_list(config: dict, with_enabled: bool | None = None):
     return normalized, []
 
 
+def normalize_web_config_payload(config: dict):
+    """统一规范化 Web 配置结构，避免前端因缺省字段崩溃。"""
+    normalized = dict(config)
+    normalized['autoRetry'] = InputValidator.normalize_auto_retry_config(
+        normalized.get('autoRetry')
+    )
+
+    normalized_proxies, proxy_errors = normalize_proxies_list(normalized, with_enabled=True)
+    if proxy_errors:
+        return None, proxy_errors
+
+    normalized['proxies'] = normalized_proxies or []
+    return normalized, []
+
+
 def log_internal_error(log_message: str, exc: Exception, user_message: str, status_code: int = 500):
     """记录详细错误，但对前端只返回通用消息。"""
     logger.exception(f'{log_message}: {str(exc)}')
@@ -75,6 +93,15 @@ def get_download_snapshot():
 def get_restart_snapshot():
     """读取当前重启任务状态快照。"""
     return runtime_state.restart_manager.snapshot()
+
+
+def strip_web_only_fields(config: dict):
+    """剥离仅供 Web 管理使用的配置字段。"""
+    return {
+        key: value
+        for key, value in config.items()
+        if key not in WEB_ONLY_CONFIG_FIELDS
+    }
 
 
 def run_restart_in_background():
@@ -164,7 +191,8 @@ def ws_handler(ws):
                     'frpc_version': status.get('frpc_version', '待检测'),
                     'frpc_version_hint': status.get('frpc_version_hint', ''),
                     'frps_version': status.get('frps_version', '待检测'),
-                    'frps_version_hint': status.get('frps_version_hint', '')
+                    'frps_version_hint': status.get('frps_version_hint', ''),
+                    'auto_retry': status.get('auto_retry', {})
                 }))
                 time.sleep(2)
         except Exception as e:
@@ -250,6 +278,7 @@ def save_frpc_config():
 
         if not isinstance(config, dict):
             return json_error('配置内容必须是 JSON 对象', 400)
+        config = strip_web_only_fields(config)
         
         normalized_proxies, proxy_errors = normalize_proxies_list(config, with_enabled=False)
         if proxy_errors:
@@ -299,26 +328,31 @@ def get_config_file():
         if os.path.exists(runtime_settings.web_config_path):
             with open(runtime_settings.web_config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            return jsonify(config)
+            normalized_config, proxy_errors = normalize_web_config_payload(config)
+            if proxy_errors:
+                return jsonify({
+                    'status': 'error',
+                    'message': '；'.join(proxy_errors),
+                    'errors': proxy_errors
+                }), 400
+            return jsonify(normalized_config)
         else:
             # 如果 config.json 不存在，尝试从 frpc.json 读取并添加 enabled 字段
             if os.path.exists(runtime_settings.frpc_config_path):
                 with open(runtime_settings.frpc_config_path, 'r', encoding='utf-8') as f:
                     config = json.load(f)
-                normalized_proxies, proxy_errors = normalize_proxies_list(config, with_enabled=True)
+                normalized_config, proxy_errors = normalize_web_config_payload(config)
                 if proxy_errors:
                     return jsonify({
                         'status': 'error',
                         'message': '；'.join(proxy_errors),
                         'errors': proxy_errors
                     }), 400
-                if normalized_proxies is not None:
-                    config['proxies'] = normalized_proxies
                 # 保存为 config.json
                 os.makedirs(runtime_settings.frpc_work_dir, exist_ok=True)
                 with open(runtime_settings.web_config_path, 'w', encoding='utf-8') as f:
-                    json.dump(config, f, indent=2, ensure_ascii=False)
-                return jsonify(config)
+                    json.dump(normalized_config, f, indent=2, ensure_ascii=False)
+                return jsonify(normalized_config)
             return jsonify({
                 'status': 'error',
                 'message': '配置文件不存在'
@@ -335,17 +369,15 @@ def save_config_file():
         if not isinstance(config, dict):
             return json_error('配置内容必须是 JSON 对象', 400)
 
-        normalized_proxies, proxy_errors = normalize_proxies_list(config, with_enabled=True)
+        normalized_config, proxy_errors = normalize_web_config_payload(config)
         if proxy_errors:
             return jsonify({
                 'status': 'error',
                 'message': '；'.join(proxy_errors),
                 'errors': proxy_errors
             }), 400
-        if normalized_proxies is not None:
-            config['proxies'] = normalized_proxies
 
-        validation_errors = InputValidator.validate_frpc_config(config)
+        validation_errors = InputValidator.validate_frpc_config(normalized_config)
         if validation_errors:
             return jsonify({
                 'status': 'error',
@@ -355,7 +387,7 @@ def save_config_file():
         
         os.makedirs(runtime_settings.frpc_work_dir, exist_ok=True)
         with open(runtime_settings.web_config_path, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
+            json.dump(normalized_config, f, indent=2, ensure_ascii=False)
         return jsonify({
             'status': 'success',
             'message': '配置已保存'
