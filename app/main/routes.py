@@ -4,6 +4,7 @@ from app.main import bp
 import json
 import os
 import requests
+import subprocess
 import tarfile
 import shutil
 from pathlib import Path
@@ -102,6 +103,48 @@ def strip_web_only_fields(config: dict):
         for key, value in config.items()
         if key not in WEB_ONLY_CONFIG_FIELDS
     }
+
+
+def verify_saved_frpc_config(runtime_settings, config_path=None):
+    """使用 frpc 官方 verify 命令校验运行配置。"""
+    frpc_binary_path = Path(runtime_settings.frpc_binary_path)
+    frpc_config_path = Path(config_path or runtime_settings.frpc_config_path)
+
+    if not frpc_binary_path.is_file():
+        return False, f'未检测到 frpc 可执行文件：{frpc_binary_path}'
+    if not frpc_config_path.is_file():
+        return False, f'未检测到 frpc.json 配置文件：{frpc_config_path}'
+
+    try:
+        if os.name != 'nt' and not os.access(frpc_binary_path, os.X_OK):
+            os.chmod(frpc_binary_path, 0o755)
+
+        result = subprocess.run(
+            [str(frpc_binary_path), 'verify', '-c', str(frpc_config_path)],
+            cwd=str(frpc_config_path.parent),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=15
+        )
+    except subprocess.TimeoutExpired:
+        return False, 'frpc.json 校验超时，请检查配置是否异常'
+    except Exception as exc:
+        logger.exception('执行 frpc 配置校验失败')
+        return False, f'执行 frpc 配置校验失败：{exc}'
+
+    verify_output = '\n'.join(
+        item.strip()
+        for item in (result.stdout, result.stderr)
+        if item and item.strip()
+    ).strip()
+
+    if result.returncode != 0:
+        if not verify_output:
+            verify_output = f'frpc verify 退出码：{result.returncode}'
+        return False, f'frpc.json 校验失败：\n{verify_output}'
+
+    return True, verify_output or 'frpc.json 校验通过'
 
 
 def run_restart_in_background():
@@ -299,12 +342,30 @@ def save_frpc_config():
             }), 400
         
         os.makedirs(runtime_settings.frpc_work_dir, exist_ok=True)
-        with open(runtime_settings.frpc_config_path, 'w', encoding='utf-8') as f:
+        frpc_config_path = Path(runtime_settings.frpc_config_path)
+        temp_config_path = frpc_config_path.with_name(f'.{frpc_config_path.name}.verify.tmp')
+        with open(temp_config_path, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
+
+        verify_success, verify_message = verify_saved_frpc_config(runtime_settings, temp_config_path)
+        if not verify_success:
+            try:
+                temp_config_path.unlink(missing_ok=True)
+            except Exception:
+                logger.warning(f'删除临时校验文件失败: {temp_config_path}')
+            logger.warning(f'frpc.json 校验失败: {verify_message}')
+            return jsonify({
+                'status': 'error',
+                'message': verify_message
+            }), 400
+
+        os.replace(temp_config_path, frpc_config_path)
+
         logger.info('frpc.json 保存成功')
         return jsonify({
             'status': 'success',
-            'message': 'frpc.json 已保存'
+            'message': 'frpc.json 已保存',
+            'verify_message': verify_message
         })
     except Exception as e:
         return log_internal_error('保存 frpc.json 失败', e, '保存 frpc.json 失败，请稍后重试')

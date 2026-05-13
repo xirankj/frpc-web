@@ -1299,6 +1299,8 @@
             color: var(--text-color);
             font-size: 15px;
             line-height: 1.8;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
         @media (max-width: 1200px) {
@@ -3472,7 +3474,7 @@ async function persistConfigArtifacts(config, options = {}) {
         onSuccess = null,
         successMessage = '配置已成功保存',
         successWithoutEnabledMessage = '配置已保存，但没有启用的客户端配置',
-        frpcSaveFailedMessage = '保存成功，但 frpc.json 保存失败！',
+        frpcSaveFailedMessage = 'frpc.json 保存或校验失败！',
         frpcDeleteFailedMessage = '保存成功，但删除 frpc.json 失败！'
     } = options;
 
@@ -3506,13 +3508,22 @@ async function persistConfigArtifacts(config, options = {}) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(frpcConfig)
             });
-            if (!frpcResponse.ok) throw new Error('保存 frpc 配置失败');
+            if (!frpcResponse.ok) {
+                let errorMessage = '保存 frpc 配置失败';
+                try {
+                    const errorResult = await frpcResponse.json();
+                    errorMessage = errorResult.message || errorMessage;
+                } catch (parseError) {
+                    errorMessage = await frpcResponse.text() || errorMessage;
+                }
+                throw new Error(errorMessage);
+            }
             const frpcResult = await frpcResponse.json();
             if (frpcResult.status !== 'success') {
                 throw new Error(frpcResult.message || '保存 frpc 配置失败');
             }
         } catch (error) {
-            resultMessage = frpcSaveFailedMessage;
+            throw new Error(`${frpcSaveFailedMessage}\n${error.message}`);
         }
     } else {
         resultMessage = successWithoutEnabledMessage;
